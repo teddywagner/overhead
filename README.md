@@ -160,7 +160,8 @@ Details: [docs/device-protocol.md](docs/device-protocol.md).
 - E‑ink firmware and OTA firmware updates (`firmware` is always `null`)
 - FlightPortrait account-pairing extension (setup returns only `device_token`)
 - Deployment infrastructure (guidance only in `docs/deployment.md`)
-- Aircraft enrichment beyond what the ADS-B provider reports
+- Aircraft photos and enrichment beyond adsbdb (manufacturer, model, country,
+  operator and routes come from adsbdb; see `docs/worker.md`)
 
 ## Documentation
 

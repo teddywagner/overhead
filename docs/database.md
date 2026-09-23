@@ -60,7 +60,7 @@ use `ON DELETE SET NULL (column)` so the owner column is never nulled.
 | `provider_poll_runs`  | One row per location poll: status, counts, error code, duration. No coordinates.                                                                                                                                          |
 | `worker_errors`       | Sanitised error records.                                                                                                                                                                                                  |
 | `device_logs`         | Frame log batches (level, ≤512-char message, device timestamp).                                                                                                                                                           |
-| `enrichment_attempts` | Aircraft metadata enrichment audit trail.                                                                                                                                                                                 |
+| `enrichment_attempts` | Lookup log: `kind` = `observation` (first sighting), `aircraft` or `route` (adsbdb lookups, the latter with `overflight_id`). A `success`/`not_found` row stops repeat lookups; `error` rows are retried after an hour.   |
 
 ## Grants and RLS
 
