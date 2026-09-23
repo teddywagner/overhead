@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bun dist/index.js",
+    "dev": "cd ../.. && bun --watch apps/api/src/index.ts",
+    "start": "cd ../.. && bun apps/api/dist/index.js",
     "build": "bun build src/index.ts --target bun --outdir dist --sourcemap=linked"
   },
   "dependencies": {
