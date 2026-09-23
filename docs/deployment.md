@@ -44,6 +44,9 @@ from its own folder:
   `packages/`, or the lockfile changes.
 - Each app also has a `start` script, so Railway's default command
   (`bun run --filter <package> start`) works too.
+- The root `start` script (`scripts/start.ts`) picks the app from
+  `RAILWAY_SERVICE_NAME` (or `OVERHEAD_SERVICE=api|worker`), so Railpack's
+  build step always finds a start command.
 
 Then:
 
