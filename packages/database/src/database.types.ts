@@ -60,6 +60,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      aircraft_types: {
+        Row: {
+          aircraft_class: string | null;
+          created_at: string;
+          engine_count: number | null;
+          engine_type: string | null;
+          icao_type_code: string;
+          manufacturer: string | null;
+          model: string | null;
+          name: string;
+          source: string;
+          updated_at: string;
+          wake_category: string | null;
+        };
+        Insert: {
+          aircraft_class?: string | null;
+          created_at?: string;
+          engine_count?: number | null;
+          engine_type?: string | null;
+          icao_type_code: string;
+          manufacturer?: string | null;
+          model?: string | null;
+          name: string;
+          source?: string;
+          updated_at?: string;
+          wake_category?: string | null;
+        };
+        Update: {
+          aircraft_class?: string | null;
+          created_at?: string;
+          engine_count?: number | null;
+          engine_type?: string | null;
+          icao_type_code?: string;
+          manufacturer?: string | null;
+          model?: string | null;
+          name?: string;
+          source?: string;
+          updated_at?: string;
+          wake_category?: string | null;
+        };
+        Relationships: [];
+      };
       art_assets: {
         Row: {
           aircraft_id: string | null;

@@ -140,6 +140,10 @@ and flight-route database:
 - Each lookup is logged in `private.enrichment_attempts`; `success` and
   `not_found` are final, errors retry after an hour. A 429 or non-retryable
   error pauses enrichment for 10 minutes.
+- After each aircraft lookup, anything adsbdb could not supply (manufacturer,
+  model) is filled from the `aircraft_types` reference table by ICAO type
+  code, so helicopters and private aircraft unknown to adsbdb still get e.g.
+  `Bell` / `407`. adsbdb's airframe-specific values take priority.
 - Aircraft fields are only filled when empty, so existing and manual values
   are never overwritten. The operator comes from the flight's airline (who is
   flying it today) and is skipped for aircraft marked `metadata_source = manual`.

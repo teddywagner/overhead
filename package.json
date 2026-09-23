@@ -31,6 +31,7 @@
     "db:types": "supabase gen types typescript --local --schema public > packages/database/src/database.types.ts && prettier --write packages/database/src/database.types.ts",
     "db:lint": "supabase db lint --level warning",
     "db:test": "supabase test db",
+    "db:load-types": "bun scripts/load-aircraft-types.ts",
     "openapi": "bun run apps/api/scripts/export-openapi.ts"
   },
   "trustedDependencies": [

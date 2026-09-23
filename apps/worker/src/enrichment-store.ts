@@ -1,5 +1,6 @@
 import type { AircraftDetails, FlightRoute } from '@overhead/flight-tracking';
 import type { Sql } from '@overhead/database';
+import { fillAircraftFromTypes } from './aircraft-types-store';
 
 export type LookupStatus = 'success' | 'not_found' | 'error';
 
@@ -100,6 +101,8 @@ export class PostgresEnrichmentStore implements EnrichmentStore {
             raw_metadata = raw_metadata || jsonb_build_object('adsbdb', ${JSON.stringify(d)}::jsonb)
           where id = ${target.id}`;
       }
+      // Whatever adsbdb could not supply, take from the aircraft type table.
+      await fillAircraftFromTypes(tx as unknown as Sql, target.id);
       await tx`
         insert into private.enrichment_attempts
           (aircraft_id, icao24, provider, kind, status, error_code)
