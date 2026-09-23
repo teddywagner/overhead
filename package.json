@@ -11,9 +11,11 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '@overhead/api' --filter '@overhead/worker' dev",
-    "dev:api": "bun run --filter '@overhead/api' dev",
-    "dev:worker": "bun run --filter '@overhead/worker' dev",
+    "dev": "bun run --parallel dev:api dev:worker",
+    "dev:api": "bun --watch apps/api/src/index.ts",
+    "dev:worker": "bun --watch apps/worker/src/index.ts",
+    "start:api": "bun apps/api/dist/index.js",
+    "start:worker": "bun apps/worker/dist/index.js",
     "test": "bun test",
     "test:unit": "SKIP_INTEGRATION=1 bun test",
     "test:integration": "REQUIRE_INTEGRATION=1 bun test --timeout 30000 integration",

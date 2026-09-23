@@ -4,7 +4,7 @@
 
 ```bash
 bun run dev:worker                 # watch mode
-bun run --filter @overhead/worker start   # after `bun run build`
+bun run start:worker            # after `bun run build`
 ```
 
 ## Loop
