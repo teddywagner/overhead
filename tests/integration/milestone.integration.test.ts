@@ -185,6 +185,46 @@ describe.skipIf(skipIntegration)('milestone: mocked overflight end to end', () =
     expect(hangar.body.data.items).toHaveLength(0);
   });
 
+  test('passes from the adsb.lol provider persist under its own provider name', async () => {
+    const created = await call<{ id: string }>(app, 'POST', '/api/v1/locations', owner, {
+      name: 'adsb.lol site',
+      latitude: -0.5,
+      longitude: 0.5,
+      timezone: 'UTC',
+    });
+    const previous = locationId;
+    locationId = created.body.data.id;
+    let now = epoch;
+    const clock = () => new Date(now);
+    const mock = new MockAircraftProvider({
+      scenario: MOCK_SCENARIOS['direct-crossing']!,
+      epoch: new Date(epoch),
+      clock,
+    });
+    // Same traffic, reported as adsb.lol (exercises the DB provider checks).
+    const provider = {
+      name: 'adsb_lol' as const,
+      getAircraftNear: mock.getAircraftNear.bind(mock),
+    };
+    const poller = new Poller({
+      provider,
+      store: new ScopedStore(sql, locationId),
+      logger: silentLogger,
+      pollIntervalS: 15,
+      clock,
+    });
+    for (let t = 0; t <= 600; t += 15) {
+      now = epoch + t * 1000;
+      expect((await poller.runCycle()).failed).toBe(0);
+    }
+    const rows = await sql`
+      select provider, provider_pass_key, status from public.overflights where location_id = ${locationId}`;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].provider).toBe('adsb_lol');
+    expect(String(rows[0].provider_pass_key).startsWith('adsb_lol:')).toBe(true);
+    locationId = previous;
+  });
+
   test('a worker restart mid-pass resumes from persisted state', async () => {
     // Fresh location, crash-and-restart halfway through the crossing.
     const created = await call<{ id: string }>(app, 'POST', '/api/v1/locations', owner, {

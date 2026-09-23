@@ -75,8 +75,12 @@ export const apiEnvSchema = baseEnvSchema
 export const workerEnvSchema = baseEnvSchema
   .extend(databaseEnvSchema.shape)
   .extend({
-    AIRCRAFT_PROVIDER: z.enum(['airplanes_live', 'mock']).default('airplanes_live'),
+    AIRCRAFT_PROVIDER: z.enum(['adsb_lol', 'airplanes_live', 'mock']).default('adsb_lol'),
+    ADSB_LOL_BASE_URL: z.url().default('https://api.adsb.lol'),
     AIRPLANES_LIVE_BASE_URL: z.url().default('https://api.airplanes.live'),
+    /** Sent to whichever ADS-B provider is active. */
+    AIRCRAFT_PROVIDER_USER_AGENT: z.string().trim().default(''),
+    /** Legacy name for AIRCRAFT_PROVIDER_USER_AGENT; still honoured. */
     AIRPLANES_LIVE_USER_AGENT: z.string().trim().default(''),
     WORKER_POLL_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(15),
     PASS_GAP_TIMEOUT_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
@@ -86,16 +90,24 @@ export const workerEnvSchema = baseEnvSchema
     MOCK_SCENARIO: z.string().default('direct-crossing'),
   })
   .superRefine((env, ctx) => {
-    if (env.AIRCRAFT_PROVIDER === 'airplanes_live' && env.AIRPLANES_LIVE_USER_AGENT.length === 0) {
+    if (env.AIRCRAFT_PROVIDER !== 'mock' && providerUserAgent(env).length === 0) {
       ctx.addIssue({
         code: 'custom',
-        path: ['AIRPLANES_LIVE_USER_AGENT'],
+        path: ['AIRCRAFT_PROVIDER_USER_AGENT'],
         message:
-          'is required when AIRCRAFT_PROVIDER=airplanes_live ' +
+          `is required when AIRCRAFT_PROVIDER=${env.AIRCRAFT_PROVIDER} ` +
           '(use a descriptive value with contact details, e.g. "overhead/0.1 (you@example.com)")',
       });
     }
   });
+
+/** The User-Agent for ADS-B provider requests (new name first, legacy fallback). */
+export function providerUserAgent(env: {
+  AIRCRAFT_PROVIDER_USER_AGENT: string;
+  AIRPLANES_LIVE_USER_AGENT: string;
+}): string {
+  return env.AIRCRAFT_PROVIDER_USER_AGENT || env.AIRPLANES_LIVE_USER_AGENT;
+}
 
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

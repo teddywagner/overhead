@@ -40,7 +40,12 @@ export interface AircraftPositionProvider {
 export class ProviderError extends Error {
   constructor(
     public readonly code:
-      'timeout' | 'rate_limited' | 'http_error' | 'invalid_response' | 'network_error',
+      | 'timeout'
+      | 'rate_limited'
+      | 'access_denied'
+      | 'http_error'
+      | 'invalid_response'
+      | 'network_error',
     message: string,
     public readonly retryable: boolean,
     public readonly retryAfterMs: number | null = null,

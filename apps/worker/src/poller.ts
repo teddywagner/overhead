@@ -147,10 +147,15 @@ export class Poller {
         summary.failed++;
         const failures = h.failures + 1;
         const retryAfter = err instanceof ProviderError ? err.retryAfterMs : null;
-        const delay = this.backoffMs(failures, retryAfter);
-        this.health.set(location.id, { failures, nextAttemptAt: startedAt.getTime() + delay });
         const code = err instanceof ProviderError ? err.code : 'processing_error';
-        if (err instanceof ProviderError && err.code === 'rate_limited') {
+        // Access refused won't fix itself quickly: wait the maximum backoff.
+        const delay =
+          code === 'access_denied'
+            ? (this.options.backoffMaxMs ?? 15 * 60_000)
+            : this.backoffMs(failures, retryAfter);
+        this.health.set(location.id, { failures, nextAttemptAt: startedAt.getTime() + delay });
+        // Rate limits and refused access apply to the whole provider, not one location.
+        if (code === 'rate_limited' || code === 'access_denied') {
           this.providerPausedUntil = startedAt.getTime() + delay;
         }
         logger.warn('location poll failed', {

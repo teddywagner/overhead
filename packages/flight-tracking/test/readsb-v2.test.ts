@@ -1,14 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  ADSB_LOL_DEFAULT_BASE_URL,
+  AdsbLolProvider,
   AirplanesLiveProvider,
   ProviderError,
-  parseAirplanesLiveResponse,
+  parseReadsbV2Response,
   parseRetryAfter,
 } from '../src';
-import fixture from './fixtures/airplanes-live-point.json';
+import fixture from './fixtures/readsb-v2-point.json';
 
-describe('Airplanes.live response parsing', () => {
-  const { positions, skipped } = parseAirplanesLiveResponse(fixture);
+describe('readsb v2 response parsing (Airplanes.live, adsb.lol)', () => {
+  const { positions, skipped } = parseReadsbV2Response(fixture);
   const byHex = new Map(positions.map((p) => [p.icao24, p]));
 
   test('normalises a complete ADS-B record', () => {
@@ -54,17 +56,17 @@ describe('Airplanes.live response parsing', () => {
   });
 
   test('rejects structurally invalid responses', () => {
-    expect(() => parseAirplanesLiveResponse({ ac: 'nope' })).toThrow(ProviderError);
-    expect(() => parseAirplanesLiveResponse(null)).toThrow(ProviderError);
+    expect(() => parseReadsbV2Response({ ac: 'nope' })).toThrow(ProviderError);
+    expect(() => parseReadsbV2Response(null)).toThrow(ProviderError);
   });
 
   test('accepts an empty/null aircraft list', () => {
-    expect(parseAirplanesLiveResponse({ ac: null, now: 1 }).positions).toEqual([]);
-    expect(parseAirplanesLiveResponse({ now: 1 }).positions).toEqual([]);
+    expect(parseReadsbV2Response({ ac: null, now: 1 }).positions).toEqual([]);
+    expect(parseReadsbV2Response({ now: 1 }).positions).toEqual([]);
   });
 });
 
-describe('Airplanes.live client', () => {
+describe('readsb v2 point client', () => {
   const query = { latitude: 0.5, longitude: 0.5, radiusNm: 5 };
   const make = (
     fetchImpl: typeof fetch,
@@ -162,6 +164,55 @@ describe('Airplanes.live client', () => {
 
   test('requires a User-Agent', () => {
     expect(() => make(fetch, { userAgent: ' ' })).toThrow();
+  });
+
+  test('maps 401/403 to a non-retryable access_denied error that explains why', async () => {
+    for (const status of [401, 403]) {
+      const err = (await make((async () => new Response('', { status })) as unknown as typeof fetch)
+        .getAircraftNear(query)
+        .catch((e) => e)) as ProviderError;
+      expect(err.code).toBe('access_denied');
+      expect(err.retryable).toBe(false);
+      expect(err.httpStatus).toBe(status);
+      expect(err.message).toContain('feeder access or an API key');
+      expect(err.message).not.toContain('0.5');
+    }
+  });
+});
+
+describe('named providers', () => {
+  const ok = (async () => Response.json(fixture)) as unknown as typeof fetch;
+  const opts = { userAgent: 'overhead-tests/0.1', fetch: ok, sleep: async () => {} };
+
+  test('adsb.lol uses its own name, default URL and label', async () => {
+    let seenUrl = '';
+    const provider = new AdsbLolProvider({
+      ...opts,
+      baseUrl: ADSB_LOL_DEFAULT_BASE_URL,
+      fetch: (async (url: URL) => {
+        seenUrl = String(url);
+        return Response.json(fixture);
+      }) as unknown as typeof fetch,
+    });
+    expect(provider.name).toBe('adsb_lol');
+    expect(
+      await provider.getAircraftNear({ latitude: 0.5, longitude: 0.5, radiusNm: 6 }),
+    ).toHaveLength(4);
+    expect(seenUrl).toBe('https://api.adsb.lol/v2/point/0.50000/0.50000/6');
+    const err = (await new AdsbLolProvider({
+      ...opts,
+      baseUrl: ADSB_LOL_DEFAULT_BASE_URL,
+      fetch: (async () => new Response('', { status: 403 })) as unknown as typeof fetch,
+    })
+      .getAircraftNear({ latitude: 0.5, longitude: 0.5, radiusNm: 6 })
+      .catch((e) => e)) as ProviderError;
+    expect(err.message.startsWith('adsb.lol')).toBe(true);
+  });
+
+  test('Airplanes.live keeps its name for feeders', () => {
+    expect(new AirplanesLiveProvider({ ...opts, baseUrl: 'https://api.airplanes.live' }).name).toBe(
+      'airplanes_live',
+    );
   });
 
   test('parses Retry-After dates and seconds', () => {

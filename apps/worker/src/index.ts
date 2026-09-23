@@ -5,11 +5,13 @@ import {
   appSlug,
   createLogger,
   loadEnv,
+  providerUserAgent,
   workerEnvSchema,
   type WorkerEnv,
 } from '@overhead/core';
 import { createSql } from '@overhead/database';
 import {
+  AdsbLolProvider,
   AirplanesLiveProvider,
   MOCK_SCENARIOS,
   MockAircraftProvider,
@@ -29,10 +31,11 @@ export function createProvider(env: WorkerEnv): AircraftPositionProvider {
     // Replay the scenario every 15 minutes so a dev worker keeps producing traffic.
     return new MockAircraftProvider({ scenario, epoch: new Date(), loopS: 900 });
   }
-  return new AirplanesLiveProvider({
-    baseUrl: env.AIRPLANES_LIVE_BASE_URL,
-    userAgent: env.AIRPLANES_LIVE_USER_AGENT,
-  });
+  const userAgent = providerUserAgent(env);
+  if (env.AIRCRAFT_PROVIDER === 'airplanes_live') {
+    return new AirplanesLiveProvider({ baseUrl: env.AIRPLANES_LIVE_BASE_URL, userAgent });
+  }
+  return new AdsbLolProvider({ baseUrl: env.ADSB_LOL_BASE_URL, userAgent });
 }
 
 async function main(): Promise<void> {

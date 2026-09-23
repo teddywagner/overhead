@@ -19,8 +19,15 @@ export async function integrationEnv(): Promise<ApiEnv | null> {
     return null;
   }
   const host = new URL(env.SUPABASE_URL).hostname;
-  if (process.env.REQUIRE_INTEGRATION !== '1' && !['127.0.0.1', 'localhost'].includes(host)) {
-    // Never run destructive integration tests against a hosted project by accident.
+  if (!['127.0.0.1', 'localhost'].includes(host) && process.env.ALLOW_REMOTE_INTEGRATION !== '1') {
+    // Never run destructive integration tests against a hosted project by
+    // accident, not even with REQUIRE_INTEGRATION=1.
+    if (process.env.REQUIRE_INTEGRATION === '1') {
+      throw new Error(
+        'Integration tests create and delete data; SUPABASE_URL is not local. ' +
+          'Point .env at local Supabase (see README) or set ALLOW_REMOTE_INTEGRATION=1.',
+      );
+    }
     return null;
   }
   try {
