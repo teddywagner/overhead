@@ -31,21 +31,26 @@ bunx supabase db advisors --linked --type all
 
 ## Railway
 
-The repo includes one config file per service, `railway/api.json` and
-`railway/worker.json`: build with `bun run build`, start with
-`bun run start:api` / `bun run start:worker`. The API also gets a `/health`
-check. Railpack detects Bun from `packageManager` in `package.json`.
+Deploy from GitHub: **New Project → Deploy from GitHub repo →** this repo.
+Railway detects the Bun workspaces and creates one service per app,
+**@overhead/api** and **@overhead/worker**. Each service reads its config
+from its own folder:
 
-1. **New project → Deploy from GitHub repo →** this repository. Railway creates
-   one service.
-2. **API service → Settings:**
-   - Config-as-code file: `/railway/api.json` (absolute path).
-   - Networking: **Generate domain** to get the public HTTPS address the web
-     app and frames will use.
-3. **Add a second service** from the same repo (**+ Create → GitHub repo**)
-   and set its config file to `/railway/worker.json`. Don't give it a domain.
-   Keep it at **one replica**.
-4. **Variables** (each service → Variables → Raw editor):
+- `apps/api/railway.json`: builds the API only, starts it with
+  `bun run start:api`, `/health` check, restarts on failure.
+- `apps/worker/railway.json`: builds the worker only, starts it with
+  `bun run start:worker`, always restarts.
+- `watchPatterns`: each service redeploys when its own app, the shared
+  `packages/`, or the lockfile changes.
+- Each app also has a `start` script, so Railway's default command
+  (`bun run --filter <package> start`) works too.
+
+Then:
+
+1. **@overhead/api → Settings → Networking → Generate Domain**. This is the
+   public HTTPS address the web app and frames use. Don't give the worker a
+   domain, and keep it at **one replica**.
+2. **Variables** (each service → Variables → Raw editor):
 
    | Variable                                                          | API | Worker |
    | ----------------------------------------------------------------- | --- | ------ |
@@ -59,13 +64,12 @@ check. Railpack detects Bun from `packageManager` in `package.json`.
 
    Don't set `API_PORT`: Railway provides `PORT` and the API uses it.
 
-5. Deploy both services. Check `https://<your-domain>/ready`, and look in the
-   worker's logs for `worker starting` followed by successful polls.
-6. **Stop any worker running on your own machine.** Two workers don't create
+3. Deploy. Check `https://<your-domain>/ready`, and look in the worker's logs
+   for `worker starting` followed by successful polls.
+4. **Stop any worker running on your own machine.** Two workers don't create
    duplicate overflights, but they double the requests to adsb.lol.
 
-Pushes to `main` redeploy automatically. Each service only rebuilds when
-files it uses change (the `watchPatterns` in its config file).
+Pushes to `main` redeploy automatically.
 
 ## Running the processes
 

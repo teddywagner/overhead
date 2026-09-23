@@ -2,14 +2,8 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "bun run build",
-    "watchPatterns": [
-      "/apps/api/**",
-      "/packages/**",
-      "/package.json",
-      "/bun.lock",
-      "/railway/api.json"
-    ]
+    "buildCommand": "bun run --filter @overhead/api build",
+    "watchPatterns": ["/apps/api/**", "/packages/**", "/package.json", "/bun.lock"]
   },
   "deploy": {
     "startCommand": "bun run start:api",
