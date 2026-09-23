@@ -1,0 +1,13 @@
+{
+  "name": "@overhead/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@overhead/core": "workspace:*",
+    "@supabase/supabase-js": "2.117.0"
+  }
+}

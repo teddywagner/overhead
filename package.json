@@ -1,0 +1,46 @@
+{
+  "name": "overhead",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "engines": {
+    "bun": ">=1.4.2"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '@overhead/api' --filter '@overhead/worker' dev",
+    "dev:api": "bun run --filter '@overhead/api' dev",
+    "dev:worker": "bun run --filter '@overhead/worker' dev",
+    "test": "bun test",
+    "test:unit": "SKIP_INTEGRATION=1 bun test",
+    "test:integration": "REQUIRE_INTEGRATION=1 bun test --timeout 30000 integration",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "bun run --filter '@overhead/api' --filter '@overhead/worker' build",
+    "verify": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "supabase": "supabase",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local --schema public > packages/database/src/database.types.ts && prettier --write packages/database/src/database.types.ts",
+    "db:lint": "supabase db lint --level warning",
+    "db:test": "supabase test db",
+    "openapi": "bun run apps/api/scripts/export-openapi.ts"
+  },
+  "trustedDependencies": [
+    "supabase"
+  ],
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/bun": "1.4.2",
+    "eslint": "10.11.0",
+    "prettier": "3.9.8",
+    "supabase": "2.117.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1"
+  }
+}
