@@ -41,6 +41,7 @@ explicit grants. Nothing depends on the project's creation-time setting.
 | `art_assets`        | `scope` ∈ `registration`, `operator_livery`, `operator_type`, `type`, `fallback` with per-scope required fields; `status` ∈ `draft`, `pending_review`, `approved`, `rejected`, `archived`; `approved ⇔ approved_at is not null`.                                                                                                                          |
 | `posters`           | Metadata only. `status` ∈ `draft`, `rendering`, `ready`, `failed`, `archived`; `ready` requires `device_binary_path` and `binary_sha256`.                                                                                                                                                                                                                 |
 | `poster_items`      | Links posters to overflights and art. Carries `owner_id` so RLS is a direct comparison.                                                                                                                                                                                                                                                                   |
+| `aircraft_types`    | Reference data, not user data: ICAO type designator → name, manufacturer, model, class (`helicopter`, `landplane`, …), engine count/type, wake category. Readable by any signed-in user (policy `using (true)`); no user writes. Filled by `bun run db:load-types` (source `tar1090-db`); rows with source `manual` are never overwritten.                |
 | `devices`           | FlightPortrait frames: unique `mac_address`, unique 32-hex `device_ref`, telemetry, poll interval, reset flag.                                                                                                                                                                                                                                            |
 
 ### Ownership integrity
@@ -60,7 +61,7 @@ use `ON DELETE SET NULL (column)` so the owner column is never nulled.
 | `provider_poll_runs`  | One row per location poll: status, counts, error code, duration. No coordinates.                                                                                                                                          |
 | `worker_errors`       | Sanitised error records.                                                                                                                                                                                                  |
 | `device_logs`         | Frame log batches (level, ≤512-char message, device timestamp).                                                                                                                                                           |
-| `enrichment_attempts` | Aircraft metadata enrichment audit trail.                                                                                                                                                                                 |
+| `enrichment_attempts` | Lookup log: `kind` = `observation` (first sighting), `aircraft` or `route` (adsbdb lookups, the latter with `overflight_id`). A `success`/`not_found` row stops repeat lookups; `error` rows are retried after an hour.   |
 
 ## Grants and RLS
 

@@ -5,18 +5,22 @@ import {
   appSlug,
   createLogger,
   loadEnv,
+  type Logger,
   providerUserAgent,
   workerEnvSchema,
   type WorkerEnv,
 } from '@overhead/core';
-import { createSql } from '@overhead/database';
+import { createSql, type Sql } from '@overhead/database';
 import {
   AdsbLolProvider,
+  AdsbdbClient,
   AirplanesLiveProvider,
   MOCK_SCENARIOS,
   MockAircraftProvider,
   type AircraftPositionProvider,
 } from '@overhead/flight-tracking';
+import { Enricher } from './enricher';
+import { PostgresEnrichmentStore } from './enrichment-store';
 import { Poller, safeMessage } from './poller';
 import { PostgresWorkerStore } from './store';
 
@@ -36,6 +40,18 @@ export function createProvider(env: WorkerEnv): AircraftPositionProvider {
     return new AirplanesLiveProvider({ baseUrl: env.AIRPLANES_LIVE_BASE_URL, userAgent });
   }
   return new AdsbLolProvider({ baseUrl: env.ADSB_LOL_BASE_URL, userAgent });
+}
+
+/** adsbdb enrichment, unless disabled or running on synthetic mock traffic. */
+export function createEnricher(env: WorkerEnv, sql: Sql, logger: Logger): Enricher | null {
+  if (env.ENRICHMENT_PROVIDER === 'none' || env.AIRCRAFT_PROVIDER === 'mock') return null;
+  return new Enricher({
+    client: new AdsbdbClient({ baseUrl: env.ADSBDB_BASE_URL, userAgent: providerUserAgent(env) }),
+    store: new PostgresEnrichmentStore(sql),
+    logger,
+    intervalS: env.ENRICHMENT_INTERVAL_SECONDS,
+    batchSize: env.ENRICHMENT_BATCH_SIZE,
+  });
 }
 
 async function main(): Promise<void> {
@@ -61,6 +77,7 @@ async function main(): Promise<void> {
       maxPointsPerPass: env.OVERFLIGHT_POINT_MAX_PER_PASS,
     },
   });
+  const enricher = createEnricher(env, sql, logger);
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
@@ -68,6 +85,7 @@ async function main(): Promise<void> {
     shuttingDown = true;
     logger.info('shutting down', { signal });
     poller.stop();
+    enricher?.stop();
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
@@ -77,9 +95,10 @@ async function main(): Promise<void> {
     version: APP_VERSION,
     provider: provider.name,
     poll_interval_s: env.WORKER_POLL_INTERVAL_SECONDS,
+    enrichment: enricher ? 'adsbdb' : 'off',
   });
   try {
-    await poller.start();
+    await Promise.all([poller.start(), enricher?.start()]);
   } catch (err) {
     logger.error('worker crashed', { error: safeMessage(err) });
     process.exitCode = 1;

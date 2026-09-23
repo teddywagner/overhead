@@ -82,6 +82,11 @@ export const workerEnvSchema = baseEnvSchema
     AIRCRAFT_PROVIDER_USER_AGENT: z.string().trim().default(''),
     /** Legacy name for AIRCRAFT_PROVIDER_USER_AGENT; still honoured. */
     AIRPLANES_LIVE_USER_AGENT: z.string().trim().default(''),
+    /** Aircraft/route details lookup. Disabled automatically with the mock provider. */
+    ENRICHMENT_PROVIDER: z.enum(['adsbdb', 'none']).default('adsbdb'),
+    ADSBDB_BASE_URL: z.url().default('https://api.adsbdb.com'),
+    ENRICHMENT_INTERVAL_SECONDS: z.coerce.number().int().min(10).max(3600).default(30),
+    ENRICHMENT_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
     WORKER_POLL_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(15),
     PASS_GAP_TIMEOUT_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
     OVERFLIGHT_POINT_SAMPLE_SECONDS: z.coerce.number().int().min(1).max(600).default(30),

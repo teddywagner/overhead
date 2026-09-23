@@ -122,6 +122,40 @@ returns `{ upserts, finalized, started, rejected }`.
 sample and a `closest_approach` point. Older points are removed by retention
 (365 days by default).
 
+## Aircraft and route enrichment (adsbdb)
+
+ADS-B feeds such as adsb.lol carry only registration, type code and callsign.
+An `Enricher` loop runs beside the poller (so lookups never delay polling) and
+fills the rest from [adsbdb](https://www.adsbdb.com), a free, open aircraft
+and flight-route database:
+
+| Looked up by                                 | Fills                                                                                                                                                     |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mode S address (`/v0/aircraft/{hex}`)        | `aircraft.manufacturer`, `model` (e.g. `737-8`), `country`; the registered owner is kept in `raw_metadata.adsbdb` only (often a lessor, not the operator) |
+| Airline callsign (`/v0/callsign/{callsign}`) | `overflights.flight_number`, `origin_code`, `destination_code` (IATA, else ICAO); `aircraft.operator_name/icao/iata` from the airline                     |
+
+- Every `ENRICHMENT_INTERVAL_SECONDS` (30) it takes up to `ENRICHMENT_BATCH_SIZE`
+  (10) aircraft and overflights without a finished lookup. Existing rows are
+  therefore backfilled automatically. Requests are spaced ≥1.5 s apart.
+- Each lookup is logged in `private.enrichment_attempts`; `success` and
+  `not_found` are final, errors retry after an hour. A 429 or non-retryable
+  error pauses enrichment for 10 minutes.
+- After each aircraft lookup, anything adsbdb could not supply (manufacturer,
+  model) is filled from the `aircraft_types` reference table by ICAO type
+  code, so helicopters and private aircraft unknown to adsbdb still get e.g.
+  `Bell` / `407`. adsbdb's airframe-specific values take priority.
+- Aircraft fields are only filled when empty, so existing and manual values
+  are never overwritten. The operator comes from the flight's airline (who is
+  flying it today) and is skipped for aircraft marked `metadata_source = manual`.
+- Routes are only looked up for overflights from the last 7 days: adsbdb
+  returns today's route for a callsign, which is often wrong for old flights.
+  Its routes are crowd-sourced and occasionally out of date.
+- Only airline-style callsigns (`AAL2995`) are looked up; private aircraft
+  usually broadcast their registration and have no route.
+- Only public identifiers are sent — never coordinates. Set
+  `ENRICHMENT_PROVIDER=none` to turn it off; it is off automatically with the
+  mock provider.
+
 ## Idempotency and restarts
 
 - All pass state lives in `private.active_passes`; a restarted worker simply

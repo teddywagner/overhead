@@ -68,6 +68,21 @@ seed (one user `dev@overhead.local` / `overhead-local-password`, a fake
 location beside Null Island, aircraft, one qualifying pass, one near miss, an
 artwork record, a poster and a device). Nothing in the seed is real.
 
+### Aircraft type names
+
+Load the ICAO aircraft type list (type code → manufacturer, model, helicopter
+vs airplane) into the database named by `DATABASE_URL`. Run it once after
+migrations, and again whenever you want updates:
+
+```bash
+bun run db:load-types
+```
+
+The list is downloaded at run time from
+[tar1090-db](https://github.com/wiedehopf/tar1090-db), which publishes no
+licence; it is used here for a personal, non-commercial project and is not
+committed to this repository.
+
 ## 4. Generate database types
 
 ```bash
@@ -160,7 +175,8 @@ Details: [docs/device-protocol.md](docs/device-protocol.md).
 - E‑ink firmware and OTA firmware updates (`firmware` is always `null`)
 - FlightPortrait account-pairing extension (setup returns only `device_token`)
 - Deployment infrastructure (guidance only in `docs/deployment.md`)
-- Aircraft enrichment beyond what the ADS-B provider reports
+- Aircraft photos and enrichment beyond adsbdb (manufacturer, model, country,
+  operator and routes come from adsbdb; see `docs/worker.md`)
 
 ## Documentation
 

@@ -23,7 +23,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', 'tests/**', 'apps/*/scripts/**'],
+    files: ['**/*.test.ts', 'tests/**', 'apps/*/scripts/**', 'scripts/**'],
     rules: { 'no-console': 'off' },
   },
 );
