@@ -114,6 +114,16 @@ export function providerUserAgent(env: {
   return env.AIRCRAFT_PROVIDER_USER_AGENT || env.AIRPLANES_LIVE_USER_AGENT;
 }
 
+/**
+ * Hosting platforms such as Railway assign the listening port through PORT.
+ * Use it when API_PORT is not set explicitly.
+ */
+export function withPlatformPort(
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  return source.API_PORT || !source.PORT ? source : { ...source, API_PORT: source.PORT };
+}
+
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

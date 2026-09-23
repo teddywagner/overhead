@@ -29,6 +29,44 @@ bunx supabase db advisors --linked --type all
 - Optional: schedule retention with pg_cron instead of the worker
   (see database.md).
 
+## Railway
+
+The repo includes one config file per service, `railway/api.json` and
+`railway/worker.json`: build with `bun run build`, start with
+`bun run start:api` / `bun run start:worker`. The API also gets a `/health`
+check. Railpack detects Bun from `packageManager` in `package.json`.
+
+1. **New project → Deploy from GitHub repo →** this repository. Railway creates
+   one service.
+2. **API service → Settings:**
+   - Config-as-code file: `/railway/api.json` (absolute path).
+   - Networking: **Generate domain** to get the public HTTPS address the web
+     app and frames will use.
+3. **Add a second service** from the same repo (**+ Create → GitHub repo**)
+   and set its config file to `/railway/worker.json`. Don't give it a domain.
+   Keep it at **one replica**.
+4. **Variables** (each service → Variables → Raw editor):
+
+   | Variable                                                          | API | Worker |
+   | ----------------------------------------------------------------- | --- | ------ |
+   | `NODE_ENV=production`                                             | ✓   | ✓      |
+   | `DATABASE_URL` (session pooler, ending `?sslmode=require`)        | ✓   | ✓      |
+   | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` | ✓   |        |
+   | `TRUST_PROXY=true` (Railway sits behind a proxy)                  | ✓   |        |
+   | `CORS_ALLOWED_ORIGINS` (your web app's origin, when it exists)    | ✓   |        |
+   | `AIRCRAFT_PROVIDER=adsb_lol`, `AIRCRAFT_PROVIDER_USER_AGENT`      |     | ✓      |
+   | `WORKER_POLL_INTERVAL_SECONDS=30`                                 |     | ✓      |
+
+   Don't set `API_PORT`: Railway provides `PORT` and the API uses it.
+
+5. Deploy both services. Check `https://<your-domain>/ready`, and look in the
+   worker's logs for `worker starting` followed by successful polls.
+6. **Stop any worker running on your own machine.** Two workers don't create
+   duplicate overflights, but they double the requests to adsb.lol.
+
+Pushes to `main` redeploy automatically. Each service only rebuilds when
+files it uses change (the `watchPatterns` in its config file).
+
 ## Running the processes
 
 Both apps build to single-file Bun bundles:

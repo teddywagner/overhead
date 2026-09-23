@@ -5,6 +5,7 @@ import {
   appSlug,
   createLogger,
   loadEnv,
+  withPlatformPort,
   type ApiEnv,
 } from '@overhead/core';
 import {
@@ -52,7 +53,7 @@ export function buildDeps(env: ApiEnv): AppDeps & { close(): Promise<void> } {
 async function main(): Promise<void> {
   let env: ApiEnv;
   try {
-    env = loadEnv(apiEnvSchema);
+    env = loadEnv(apiEnvSchema, withPlatformPort(process.env));
   } catch (err) {
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
