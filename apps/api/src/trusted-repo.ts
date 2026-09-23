@@ -14,6 +14,10 @@ export interface DeviceAuthRecord {
   latestPosterId: string | null;
   pollIntervalSeconds: number;
   resetRequested: boolean;
+  /** The location's time zone, for quiet hours; null without a location. */
+  timeZone: string | null;
+  quietStartHour: number | null;
+  quietEndHour: number | null;
 }
 
 export interface SetupCandidate {
@@ -182,9 +186,12 @@ export class SqlTrustedRepository implements TrustedRepository {
 
   async authenticateDevice(tokenHash: string): Promise<DeviceAuthRecord | null> {
     const rows = (await this.sql`
-      select d.id, d.owner_id, d.location_id, d.latest_poster_id, d.poll_interval_seconds, d.reset_requested
+      select d.id, d.owner_id, d.location_id, d.latest_poster_id, d.poll_interval_seconds, d.reset_requested,
+             l.timezone, s.quiet_start_hour, s.quiet_end_hour
         from private.device_credentials c
         join public.devices d on d.id = c.device_id
+        left join public.locations l on l.id = d.location_id and l.owner_id = d.owner_id
+        left join public.device_display_settings s on s.device_id = d.id
        where c.token_hash = ${tokenHash} and c.enrollment_state = 'enrolled'`) as Row[];
     const r = rows[0];
     if (!r) return null;
@@ -195,6 +202,9 @@ export class SqlTrustedRepository implements TrustedRepository {
       latestPosterId: (r.latest_poster_id as string | null) ?? null,
       pollIntervalSeconds: Number(r.poll_interval_seconds),
       resetRequested: Boolean(r.reset_requested),
+      timeZone: (r.timezone as string | null) ?? null,
+      quietStartHour: r.quiet_start_hour === null ? null : Number(r.quiet_start_hour),
+      quietEndHour: r.quiet_end_hour === null ? null : Number(r.quiet_end_hour),
     };
   }
 

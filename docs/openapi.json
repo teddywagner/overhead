@@ -1530,6 +1530,1301 @@
         },
         "additionalProperties": false
       },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "display_name": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_sign_in_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "is_admin": {
+            "type": "boolean"
+          },
+          "device_count": {
+            "type": "integer"
+          },
+          "location_count": {
+            "type": "integer"
+          },
+          "overflight_count": {
+            "type": "integer"
+          },
+          "last_overflight_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "created_at",
+          "last_sign_in_at",
+          "is_admin",
+          "device_count",
+          "location_count",
+          "overflight_count",
+          "last_overflight_at"
+        ]
+      },
+      "AdminDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_email": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "location_name": {
+            "type": ["string", "null"]
+          },
+          "timezone": {
+            "type": ["string", "null"]
+          },
+          "poll_interval_seconds": {
+            "type": "integer"
+          },
+          "battery_mv": {
+            "type": ["integer", "null"]
+          },
+          "rssi": {
+            "type": ["integer", "null"]
+          },
+          "firmware_version": {
+            "type": ["string", "null"]
+          },
+          "last_boot_reason": {
+            "type": ["string", "null"]
+          },
+          "last_seen_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enrollment_state": {
+            "type": ["string", "null"]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/DisplaySettings"
+          },
+          "has_custom_settings": {
+            "type": "boolean"
+          },
+          "current_selection": {
+            "type": ["object", "null"],
+            "properties": {
+              "selected_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DisplayItem"
+                }
+              }
+            },
+            "required": ["selected_at", "reason", "items"]
+          },
+          "selections_24h": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "owner_email",
+          "name",
+          "location_id",
+          "location_name",
+          "timezone",
+          "poll_interval_seconds",
+          "battery_mv",
+          "rssi",
+          "firmware_version",
+          "last_boot_reason",
+          "last_seen_at",
+          "created_at",
+          "enrollment_state",
+          "settings",
+          "has_custom_settings",
+          "current_selection",
+          "selections_24h"
+        ]
+      },
+      "DisplaySettings": {
+        "type": "object",
+        "properties": {
+          "max_planes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "window_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 168
+          },
+          "min_dwell_minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "include_near_misses": {
+            "type": "boolean"
+          },
+          "include_helicopters": {
+            "type": "boolean"
+          },
+          "airline_only": {
+            "type": "boolean"
+          },
+          "one_per_operator_type": {
+            "type": "boolean"
+          },
+          "quiet_start_hour": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 23
+          },
+          "quiet_end_hour": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 23
+          },
+          "weights": {
+            "$ref": "#/components/schemas/DisplayWeights"
+          }
+        },
+        "required": [
+          "max_planes",
+          "window_hours",
+          "min_dwell_minutes",
+          "include_near_misses",
+          "include_helicopters",
+          "airline_only",
+          "one_per_operator_type",
+          "quiet_start_hour",
+          "quiet_end_hour",
+          "weights"
+        ]
+      },
+      "DisplayWeights": {
+        "type": "object",
+        "properties": {
+          "rarity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "proximity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "recency": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "artwork": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "detail": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          }
+        },
+        "required": ["rarity", "proximity", "recency", "artwork", "detail"]
+      },
+      "DisplayItem": {
+        "type": "object",
+        "properties": {
+          "display_order": {
+            "type": "integer"
+          },
+          "overflight_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registration": {
+            "type": ["string", "null"]
+          },
+          "callsign": {
+            "type": ["string", "null"]
+          },
+          "flight_number": {
+            "type": ["string", "null"]
+          },
+          "origin_code": {
+            "type": ["string", "null"]
+          },
+          "destination_code": {
+            "type": ["string", "null"]
+          },
+          "origin_name": {
+            "type": ["string", "null"]
+          },
+          "destination_name": {
+            "type": ["string", "null"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"]
+          },
+          "manufacturer": {
+            "type": ["string", "null"]
+          },
+          "model": {
+            "type": ["string", "null"]
+          },
+          "operator_name": {
+            "type": ["string", "null"]
+          },
+          "operator_icao": {
+            "type": ["string", "null"]
+          },
+          "closest_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closest_altitude_ft": {
+            "type": ["number", "null"]
+          },
+          "minimum_distance_m": {
+            "type": "number"
+          },
+          "art_asset_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "art_scope": {
+            "type": ["string", "null"],
+            "enum": ["registration", "operator_livery", "operator_type", "type", "fallback", null]
+          },
+          "score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "display_order",
+          "overflight_id",
+          "registration",
+          "callsign",
+          "flight_number",
+          "origin_code",
+          "destination_code",
+          "icao_type_code",
+          "manufacturer",
+          "model",
+          "operator_name",
+          "operator_icao",
+          "closest_seen_at",
+          "closest_altitude_ft",
+          "minimum_distance_m",
+          "art_asset_id",
+          "art_scope",
+          "score"
+        ],
+        "description": "One plane in a selection, as the renderer will receive it. No coordinates."
+      },
+      "AdminDeviceDetail": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/AdminDevice"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminLocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "art_urls": {
+            "$ref": "#/components/schemas/ArtUrls"
+          }
+        },
+        "required": ["device", "location", "art_urls"]
+      },
+      "AdminLocation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "search_radius_nm": {
+            "type": "number"
+          },
+          "overhead_radius_m": {
+            "type": "integer"
+          },
+          "max_altitude_ft": {
+            "type": "integer"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "name",
+          "timezone",
+          "search_radius_nm",
+          "overhead_radius_m",
+          "max_altitude_ft",
+          "is_active"
+        ],
+        "description": "Location detection rules; never coordinates."
+      },
+      "ArtUrls": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "image_url": {
+              "type": ["string", "null"]
+            },
+            "thumbnail_url": {
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["image_url", "thumbnail_url"]
+        },
+        "description": "Short-lived signed image links keyed by art asset id."
+      },
+      "AdminDeviceUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "poll_interval_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 604800
+          },
+          "location_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DisplaySettingsPatch": {
+        "type": "object",
+        "properties": {
+          "max_planes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "window_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 168
+          },
+          "min_dwell_minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "include_near_misses": {
+            "type": "boolean"
+          },
+          "include_helicopters": {
+            "type": "boolean"
+          },
+          "airline_only": {
+            "type": "boolean"
+          },
+          "one_per_operator_type": {
+            "type": "boolean"
+          },
+          "quiet_start_hour": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 23
+          },
+          "quiet_end_hour": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 23
+          },
+          "weights": {
+            "type": "object",
+            "properties": {
+              "rarity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "proximity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "recency": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "artwork": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "detail": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "description": "Fields to change; omitted fields keep their current value."
+      },
+      "DisplaySelection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "selected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisplayItem"
+            }
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": ["id", "selected_at", "reason", "items", "settings"]
+      },
+      "DisplayPreview": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/DisplaySettings"
+          },
+          "poll_interval_seconds": {
+            "type": "integer"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "selected": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisplayItem"
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoredCandidate"
+            }
+          },
+          "current_selection": {
+            "type": ["object", "null"],
+            "properties": {
+              "overflight_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "selected_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": ["overflight_ids", "selected_at"]
+          },
+          "decision": {
+            "type": "object",
+            "properties": {
+              "commit": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string",
+                "enum": ["initial", "changed", "unchanged", "dwell", "no_candidates"]
+              },
+              "hold_until": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": ["commit", "reason"]
+          },
+          "wake_schedule": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Next scheduled (timer) wakes."
+          },
+          "art_urls": {
+            "$ref": "#/components/schemas/ArtUrls"
+          }
+        },
+        "required": [
+          "at",
+          "settings",
+          "poll_interval_seconds",
+          "timezone",
+          "selected",
+          "candidates",
+          "current_selection",
+          "decision",
+          "wake_schedule",
+          "art_urls"
+        ]
+      },
+      "ScoredCandidate": {
+        "type": "object",
+        "properties": {
+          "overflight_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "icao24": {
+            "type": "string"
+          },
+          "registration": {
+            "type": ["string", "null"]
+          },
+          "callsign": {
+            "type": ["string", "null"]
+          },
+          "flight_number": {
+            "type": ["string", "null"]
+          },
+          "origin_code": {
+            "type": ["string", "null"]
+          },
+          "destination_code": {
+            "type": ["string", "null"]
+          },
+          "origin_name": {
+            "type": ["string", "null"]
+          },
+          "destination_name": {
+            "type": ["string", "null"]
+          },
+          "closest_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["qualified", "near_miss"]
+          },
+          "minimum_distance_m": {
+            "type": "number"
+          },
+          "closest_altitude_ft": {
+            "type": ["number", "null"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"]
+          },
+          "manufacturer": {
+            "type": ["string", "null"]
+          },
+          "model": {
+            "type": ["string", "null"]
+          },
+          "operator_name": {
+            "type": ["string", "null"]
+          },
+          "operator_icao": {
+            "type": ["string", "null"]
+          },
+          "aircraft_class": {
+            "type": ["string", "null"]
+          },
+          "art_asset_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "art_scope": {
+            "type": ["string", "null"],
+            "enum": ["registration", "operator_livery", "operator_type", "type", "fallback", null]
+          },
+          "airframe_sightings": {
+            "type": "integer"
+          },
+          "type_sightings": {
+            "type": ["integer", "null"]
+          },
+          "score": {
+            "type": "number"
+          },
+          "components": {
+            "type": "object",
+            "properties": {
+              "rarity": {
+                "type": "number"
+              },
+              "proximity": {
+                "type": "number"
+              },
+              "recency": {
+                "type": "number"
+              },
+              "artwork": {
+                "type": "number"
+              },
+              "detail": {
+                "type": "number"
+              }
+            },
+            "required": ["rarity", "proximity", "recency", "artwork", "detail"]
+          },
+          "excluded": {
+            "type": ["string", "null"],
+            "enum": [
+              "near_miss",
+              "helicopter",
+              "not_airline",
+              "same_airframe",
+              "same_operator_type",
+              "over_limit",
+              null
+            ]
+          }
+        },
+        "required": [
+          "overflight_id",
+          "icao24",
+          "registration",
+          "callsign",
+          "flight_number",
+          "origin_code",
+          "destination_code",
+          "origin_name",
+          "destination_name",
+          "closest_seen_at",
+          "status",
+          "minimum_distance_m",
+          "closest_altitude_ft",
+          "icao_type_code",
+          "manufacturer",
+          "model",
+          "operator_name",
+          "operator_icao",
+          "aircraft_class",
+          "art_asset_id",
+          "art_scope",
+          "airframe_sightings",
+          "type_sightings",
+          "score",
+          "components",
+          "excluded"
+        ]
+      },
+      "DisplayPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/DisplaySettingsPatch"
+          },
+          "poll_interval_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 604800
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Evaluate as of this instant (default: now)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminLocationUpdate": {
+        "type": "object",
+        "properties": {
+          "search_radius_nm": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 250
+          },
+          "overhead_radius_m": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 50000
+          },
+          "max_altitude_ft": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 60000
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminArtList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminArtAsset"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Assets per status."
+          }
+        },
+        "required": ["items", "counts"]
+      },
+      "AdminArtAsset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_email": {
+            "type": ["string", "null"]
+          },
+          "aircraft_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "aircraft_registration": {
+            "type": ["string", "null"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"]
+          },
+          "operator_icao": {
+            "type": ["string", "null"]
+          },
+          "livery_name": {
+            "type": ["string", "null"]
+          },
+          "registration": {
+            "type": ["string", "null"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["registration", "operator_livery", "operator_type", "type", "fallback"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "pending_review", "approved", "rejected", "archived"]
+          },
+          "source_image_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "storage_path": {
+            "type": "string"
+          },
+          "thumbnail_path": {
+            "type": ["string", "null"]
+          },
+          "generation_provider": {
+            "type": ["string", "null"]
+          },
+          "generation_model": {
+            "type": ["string", "null"]
+          },
+          "prompt_version": {
+            "type": ["string", "null"]
+          },
+          "identity_confidence": {
+            "type": ["number", "null"]
+          },
+          "reviewer_notes": {
+            "type": ["string", "null"]
+          },
+          "approved_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sightings_30d": {
+            "type": "integer"
+          },
+          "image_url": {
+            "type": ["string", "null"]
+          },
+          "thumbnail_url": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "owner_email",
+          "aircraft_id",
+          "aircraft_registration",
+          "icao_type_code",
+          "operator_icao",
+          "livery_name",
+          "registration",
+          "scope",
+          "status",
+          "source_image_id",
+          "storage_path",
+          "thumbnail_path",
+          "generation_provider",
+          "generation_model",
+          "prompt_version",
+          "identity_confidence",
+          "reviewer_notes",
+          "approved_at",
+          "created_at",
+          "updated_at",
+          "sightings_30d",
+          "image_url",
+          "thumbnail_url"
+        ]
+      },
+      "AdminArtUploadRequest": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["image/png", "image/jpeg", "image/webp"]
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["filename", "content_type", "owner_id"],
+        "additionalProperties": false
+      },
+      "AdminArtCreate": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storage_path": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["registration", "operator_livery", "operator_type", "type", "fallback"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z0-9]{2,4}$"
+          },
+          "operator_icao": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z]{3}$"
+          },
+          "livery_name": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "registration": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z0-9-]{1,12}$"
+          },
+          "reviewer_notes": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "approve": {
+            "type": "boolean",
+            "description": "Approve immediately after upload."
+          }
+        },
+        "required": ["owner_id", "storage_path", "scope"],
+        "additionalProperties": false
+      },
+      "AdminArtUpdate": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["registration", "operator_livery", "operator_type", "type", "fallback"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z0-9]{2,4}$"
+          },
+          "operator_icao": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z]{3}$"
+          },
+          "livery_name": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "registration": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z0-9-]{1,12}$"
+          },
+          "reviewer_notes": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminArtReview": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["approved", "rejected", "pending_review", "archived"]
+          },
+          "reviewer_notes": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          }
+        },
+        "required": ["status"],
+        "additionalProperties": false
+      },
+      "CoverageRow": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_email": {
+            "type": ["string", "null"]
+          },
+          "operator_icao": {
+            "type": ["string", "null"]
+          },
+          "operator_name": {
+            "type": ["string", "null"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"]
+          },
+          "manufacturer": {
+            "type": ["string", "null"]
+          },
+          "model": {
+            "type": ["string", "null"]
+          },
+          "sightings": {
+            "type": "integer"
+          },
+          "airframes": {
+            "type": "integer"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "best_scope": {
+            "type": ["string", "null"],
+            "enum": ["registration", "operator_livery", "operator_type", "type", "fallback", null]
+          },
+          "best_art_asset_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "best_thumbnail_url": {
+            "type": ["string", "null"]
+          },
+          "airframes_with_exact_art": {
+            "type": "integer"
+          },
+          "pending_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owner_id",
+          "owner_email",
+          "operator_icao",
+          "operator_name",
+          "icao_type_code",
+          "manufacturer",
+          "model",
+          "sightings",
+          "airframes",
+          "last_seen_at",
+          "best_scope",
+          "best_art_asset_id",
+          "best_thumbnail_url",
+          "airframes_with_exact_art",
+          "pending_count"
+        ],
+        "description": "Recorded passes grouped by operator + aircraft type, with the best artwork available."
+      },
+      "AdminSourceImage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_email": {
+            "type": ["string", "null"]
+          },
+          "aircraft_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "aircraft_registration": {
+            "type": ["string", "null"]
+          },
+          "aircraft_type": {
+            "type": ["string", "null"]
+          },
+          "source_provider": {
+            "type": "string"
+          },
+          "source_page_url": {
+            "type": ["string", "null"]
+          },
+          "original_file_url": {
+            "type": ["string", "null"]
+          },
+          "storage_path": {
+            "type": ["string", "null"]
+          },
+          "creator": {
+            "type": ["string", "null"]
+          },
+          "license_name": {
+            "type": ["string", "null"]
+          },
+          "license_url": {
+            "type": ["string", "null"]
+          },
+          "attribution_text": {
+            "type": ["string", "null"]
+          },
+          "view_angle_score": {
+            "type": ["number", "null"]
+          },
+          "identity_confidence": {
+            "type": ["number", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "art_count": {
+            "type": "integer"
+          },
+          "image_url": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "owner_email",
+          "aircraft_id",
+          "aircraft_registration",
+          "aircraft_type",
+          "source_provider",
+          "source_page_url",
+          "original_file_url",
+          "storage_path",
+          "creator",
+          "license_name",
+          "license_url",
+          "attribution_text",
+          "view_angle_score",
+          "identity_confidence",
+          "created_at",
+          "art_count",
+          "image_url"
+        ]
+      },
+      "AdminPoster": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_email": {
+            "type": ["string", "null"]
+          },
+          "location_name": {
+            "type": ["string", "null"]
+          },
+          "local_date": {
+            "type": "string"
+          },
+          "template_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "has_binary": {
+            "type": "boolean"
+          },
+          "binary_verified": {
+            "type": "boolean"
+          },
+          "generated_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "item_count": {
+            "type": "integer"
+          },
+          "pinned_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "full_color_preview_url": {
+            "type": ["string", "null"]
+          },
+          "eink_preview_url": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "owner_email",
+          "location_name",
+          "local_date",
+          "template_version",
+          "status",
+          "has_binary",
+          "binary_verified",
+          "generated_at",
+          "error",
+          "created_at",
+          "updated_at",
+          "item_count",
+          "pinned_on",
+          "full_color_preview_url",
+          "eink_preview_url"
+        ]
+      },
       "DeviceError": {
         "type": "object",
         "properties": {
@@ -6234,6 +7529,2273 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Device"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/me": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Confirm admin access",
+        "description": "Returns 403 for signed-in users who are not admins.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "is_admin": {
+                          "type": "boolean",
+                          "enum": [true]
+                        }
+                      },
+                      "required": ["user_id", "is_admin"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List users with activity counts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminUser"
+                          }
+                        }
+                      },
+                      "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/users/{id}/admin": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Make a user an admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "is_admin": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["user_id", "is_admin"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Remove a user's admin access",
+        "description": "You cannot remove your own access.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "is_admin": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["user_id", "is_admin"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/devices": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List frames across users",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "owner_id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminDevice"
+                          }
+                        }
+                      },
+                      "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/devices/{id}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get a frame with its location rules",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminDeviceDetail"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Rename a frame, change how often it wakes, or point it at another location",
+        "description": "location_id must belong to the frame's owner.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminDeviceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminDevice"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/devices/{id}/display-settings": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Change a frame's display settings",
+        "description": "Omitted fields keep their current value (or the default, for a frame without settings).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplaySettingsPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DisplaySettings"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/devices/{id}/selections": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Committed display selections, newest first",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DisplaySelection"
+                          }
+                        }
+                      },
+                      "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/devices/{id}/display-preview": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Preview what a frame would show",
+        "description": "Runs the same selection as the worker, optionally with draft settings or at another instant, and returns every candidate with its score and why it was or was not picked. Nothing is saved.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DisplayPreview"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/locations": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "A user's locations (never coordinates)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "owner_id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminLocation"
+                          }
+                        }
+                      },
+                      "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/locations/{id}": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Change a location's detection rules (never its coordinates)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLocationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminLocation"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/art-assets": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "List artwork across users",
+        "description": "Pending review first, then newest.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "owner_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "pending_review", "approved", "rejected", "archived"]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["registration", "operator_livery", "operator_type", "type", "fallback"]
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9]{2,4}$"
+            },
+            "required": false,
+            "name": "type_code",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "required": false,
+            "name": "operator",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminArtList"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin: assets"],
+        "summary": "Create artwork for a user",
+        "description": "storage_path must come from /admin/v1/art-assets/upload-url for the same owner. With approve=true the image must already be uploaded.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminArtCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminArtAsset"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/art-assets/upload-url": {
+      "post": {
+        "tags": ["Admin: assets"],
+        "summary": "Signed upload URL for artwork in a user's folder",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminArtUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SignedUpload"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/art-assets/{id}": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "Get artwork",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminArtAsset"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Admin: assets"],
+        "summary": "Change artwork's tags (scope, type, operator, livery, registration, notes)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminArtUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminArtAsset"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/art-assets/{id}/review": {
+      "post": {
+        "tags": ["Admin: assets"],
+        "summary": "Approve, reject, archive or reopen artwork",
+        "description": "Approval fails with storage_object_missing unless the image (and thumbnail) exist.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminArtReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminArtAsset"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/art-coverage": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "Which planes have artwork",
+        "description": "Recorded passes grouped by owner, operator and aircraft type, with the best approved artwork for each group and any drafts waiting for review. Most-seen first.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "owner_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 30
+            },
+            "required": false,
+            "name": "days",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "required": false,
+            "name": "include_near_misses",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CoverageRow"
+                          }
+                        }
+                      },
+                      "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/source-images": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "Reference photos across users, with licence details",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "owner_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminSourceImage"
+                          }
+                        }
+                      },
+                      "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/posters": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "Posters across users, with previews and binary status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "owner_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "rendering", "ready", "failed", "archived"]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminPoster"
+                          }
+                        }
+                      },
+                      "required": ["items"]
                     },
                     "error": {
                       "type": "null"

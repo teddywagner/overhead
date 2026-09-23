@@ -82,6 +82,14 @@ export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+/** Admin board access: a signed-in user listed in private.admins. Runs after requireUser. */
+export const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (!(await c.get('deps').admin.isAdmin(c.get('userId')))) {
+    throw new AppError('forbidden', 'Admin access required');
+  }
+  await next();
+};
+
 export const noStore: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
   c.header('Cache-Control', 'no-store');

@@ -15,6 +15,7 @@ import {
   setupBodySchema,
   validatePairingFields,
 } from '@overhead/device-protocol';
+import { sleepSecondsWithQuietHours } from '@overhead/display';
 import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { AppEnv } from '../lib/context';
@@ -182,7 +183,13 @@ deviceProtocolRouter.get('/display', async (c) => {
     return detail(c, 503, 'image temporarily unavailable');
   }
 
-  let sleepS = device.pollIntervalSeconds;
+  // Timer wakes skip the frame's quiet hours; a button press still gets the live window.
+  let sleepS = sleepSecondsWithQuietHours(
+    deps.clock?.() ?? new Date(),
+    device.pollIntervalSeconds,
+    device.timeZone,
+    { quiet_start_hour: device.quietStartHour, quiet_end_hour: device.quietEndHour },
+  );
   if (telemetry.bootReason === 'button') sleepS = Math.min(sleepS, LIVE_WINDOW_SLEEP_S);
   if (telemetry.batteryMv !== null && telemetry.batteryMv < LOW_BATTERY_MV)
     sleepS = Math.max(sleepS, LOW_BATTERY_SLEEP_S);

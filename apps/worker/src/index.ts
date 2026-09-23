@@ -19,6 +19,7 @@ import {
   MockAircraftProvider,
   type AircraftPositionProvider,
 } from '@overhead/flight-tracking';
+import { DisplayScheduler, PostgresDisplayStore } from './display-scheduler';
 import { Enricher } from './enricher';
 import { PostgresEnrichmentStore } from './enrichment-store';
 import { Poller, safeMessage } from './poller';
@@ -78,6 +79,11 @@ async function main(): Promise<void> {
     },
   });
   const enricher = createEnricher(env, sql, logger);
+  const display = new DisplayScheduler({
+    store: new PostgresDisplayStore(sql),
+    logger,
+    intervalS: env.DISPLAY_INTERVAL_SECONDS,
+  });
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
@@ -86,6 +92,7 @@ async function main(): Promise<void> {
     logger.info('shutting down', { signal });
     poller.stop();
     enricher?.stop();
+    display.stop();
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
@@ -96,9 +103,10 @@ async function main(): Promise<void> {
     provider: provider.name,
     poll_interval_s: env.WORKER_POLL_INTERVAL_SECONDS,
     enrichment: enricher ? 'adsbdb' : 'off',
+    display_interval_s: env.DISPLAY_INTERVAL_SECONDS,
   });
   try {
-    await Promise.all([poller.start(), enricher?.start()]);
+    await Promise.all([poller.start(), enricher?.start(), display.start()]);
   } catch (err) {
     logger.error('worker crashed', { error: safeMessage(err) });
     process.exitCode = 1;

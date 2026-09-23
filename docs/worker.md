@@ -156,6 +156,44 @@ and flight-route database:
   `ENRICHMENT_PROVIDER=none` to turn it off; it is off automatically with the
   mock provider.
 
+## Display selection
+
+A frame shows 1–4 planes. A `DisplayScheduler` loop runs beside the poller
+every `DISPLAY_INTERVAL_SECONDS` (60) and, for every frame whose location is
+active, decides which recent passes it should show. The logic lives in
+`packages/display` and is pure and deterministic:
+
+1. **Candidates**: the location's recorded passes from the last
+   `window_hours` (a rolling window, default 6 h).
+2. **Filters**: near misses (off by default), helicopters (on), airlines only
+   (off).
+3. **Score** (0–100): a weighted mean of five components, each 0–1:
+
+   | component | meaning                                                                       | default weight |
+   | --------- | ----------------------------------------------------------------------------- | -------------- |
+   | rarity    | `0.7 / √(type sightings) + 0.3 / (airframe sightings)` at this location       | 3              |
+   | proximity | half closeness (over 3 × overhead radius), half lowness (over max altitude)   | 2              |
+   | recency   | linear over the window                                                        | 1              |
+   | artwork   | best approved art: registration 1, livery 0.9, operator + type 0.75, type 0.4 | 2              |
+   | detail    | share of model, operator, route and registration known                        | 1              |
+
+4. **Pick** greedily by score: one pass per airframe and, by default, one
+   plane per operator + type, up to `max_planes` (default 3).
+5. **Commit**: a new `display_selections` row is written when the picked set
+   differs from the current one **and** the current one has been up for
+   `min_dwell_minutes` (default 60). An empty window never replaces what is
+   on screen.
+
+Every committed change will mean a render and an e-ink refresh, so the
+fastest a frame can change is the longer of `min_dwell_minutes` and its wake
+interval (`poll_interval_seconds`). Quiet hours (location time) push any
+timer wake that would land inside them to their end; a button press still
+gets the live window. Committed selections are the render queue for the
+portrait renderer (next phase); until then frames keep serving posters.
+
+Settings live in `public.device_display_settings` and are edited from the
+admin board, whose preview runs exactly this code with draft settings.
+
 ## Idempotency and restarts
 
 - All pass state lives in `private.active_passes`; a restarted worker simply

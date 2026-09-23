@@ -271,6 +271,7 @@ describe.skipIf(skipIntegration)('FlightPortrait device flow', () => {
     const rows = await sql`select * from private.apply_retention()`;
     expect(rows.map((r: { table_name: string }) => r.table_name).sort()).toEqual([
       'device_logs',
+      'display_selections',
       'enrichment_attempts',
       'overflight_points',
       'provider_poll_runs',

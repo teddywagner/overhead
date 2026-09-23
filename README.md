@@ -6,17 +6,20 @@ manages aircraft and artwork metadata and poster records, and serves posters to
 a [FlightPortrait](https://github.com/flightportrait/frame)-compatible e‑ink
 frame.
 
-This repository is **backend only**: Supabase schema, a typed Hono API, a
-polling worker and FlightPortrait device endpoints. The name is centralised in
+This repository is **backend first**: Supabase schema, a typed Hono API, a
+polling worker and FlightPortrait device endpoints, plus a temporary admin
+board for tuning what frames show. The name is centralised in
 `APP_NAME` / [`packages/core/src/app.ts`](packages/core/src/app.ts).
 
 ```text
 apps/api                 Hono HTTP API (+ device endpoints)
-apps/worker              long-running aircraft polling worker
+apps/worker              long-running aircraft polling worker (+ display selection)
+apps/admin               temporary admin board (Vite + React) over /admin/v1
 packages/core            config, domain types, geodesy, logging
 packages/database        Supabase clients, Bun SQL, generated types
 packages/flight-tracking provider clients + overflight state machine
 packages/device-protocol FlightPortrait protocol helpers
+packages/display         which planes a frame shows, and how often it changes
 supabase/                migrations, seed, pgTAP tests
 docs/                    architecture, database, API, worker, protocol, security, deployment
 ```
@@ -167,11 +170,40 @@ keys) and a direct or session-pooler `DATABASE_URL`. Run
 
 Details: [docs/device-protocol.md](docs/device-protocol.md).
 
+## 10. Admin board
+
+A temporary, admin-only web UI for tuning what frames show while the
+portrait display is being built. It lists users and frames, and for each
+frame lets you edit its display settings (planes at once, rolling window,
+filters, scoring weights, minimum time between changes, wake interval, quiet
+hours, location detection rules) with a live preview of what it would show,
+every candidate's score breakdown, and the history of committed selections.
+It also covers images and assets: an **Artwork** review queue (approve,
+reject, retag, upload artwork for any user), **Coverage** (the planes users
+see most, and whether there is artwork for them), reference **Images** with
+their licences, **Posters** with previews and binary status, and **My
+locations** to set your own watch locations (coordinates are only ever shown
+to their owner). How selection works:
+[docs/worker.md](docs/worker.md#display-selection).
+
+```bash
+bun run admin:grant you@example.com   # once per admin (the seed user already is one)
+bun run dev                           # API + worker
+bun run dev:admin                     # http://localhost:5173
+```
+
+The dev server reads `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from the
+root `.env` for sign-in and proxies `/admin/v1` and `/api/v1` to the API
+(`http://localhost:$API_PORT`, or `ADMIN_API_URL`), so no CORS setup is
+needed. After changing API routes, run `bun run openapi` to refresh
+`docs/openapi.json` and the admin's generated types.
+
 ## Deferred (not in this phase)
 
-- Web application / any UI
+- The end-user web application (only the admin board exists)
 - AI image generation, background removal, remote image fetching
-- Poster composition and rendering (only metadata and manually uploaded files)
+- Poster composition and rendering (only metadata and manually uploaded files;
+  committed display selections are the render queue for it)
 - E‑ink firmware and OTA firmware updates (`firmware` is always `null`)
 - FlightPortrait account-pairing extension (setup returns only `device_token`)
 - Deployment infrastructure (guidance only in `docs/deployment.md`)

@@ -121,6 +121,49 @@ Only aircraft you have observed (or attached imagery/art to) are visible.
 | POST             | `/api/v1/devices/{id}/rotate-setup-secret` | new secret (shown once); `{"revoke_token": true}` also invalidates the bearer |
 | POST             | `/api/v1/devices/{id}/request-reset`       | frame receives `reset: true` on its next display poll                         |
 
+## Admin board (`/admin/v1`)
+
+Same auth and envelope as `/api/v1`, plus the caller must be listed in
+`private.admins` (`bun run admin:grant EMAIL`); anyone else gets `403
+forbidden`. These routes read **across owners** through the trusted
+connection. They never return coordinates.
+
+| Method | Path                                      |                                                                                                                                                                                                                                     |
+| ------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/admin/v1/me`                            | 200 for admins, 403 otherwise                                                                                                                                                                                                       |
+| GET    | `/admin/v1/users`                         | every user with frame/location/pass counts, last pass, last sign-in                                                                                                                                                                 |
+| GET    | `/admin/v1/devices`                       | every frame (`?owner_id=` to filter) with display settings, current selection and changes in the last 24 h                                                                                                                          |
+| GET    | `/admin/v1/devices/{id}`                  | `{ device, location }` (location detection rules only)                                                                                                                                                                              |
+| PATCH  | `/admin/v1/devices/{id}`                  | `name`, `poll_interval_seconds` (how often the frame wakes), `location_id` (one of the owner's locations)                                                                                                                           |
+| PATCH  | `/admin/v1/devices/{id}/display-settings` | partial [display settings](worker.md#display-selection); omitted fields keep their value                                                                                                                                            |
+| GET    | `/admin/v1/devices/{id}/selections`       | committed selections, newest first (`?limit=`, max 200)                                                                                                                                                                             |
+| POST   | `/admin/v1/devices/{id}/display-preview`  | `{ settings?, poll_interval_seconds?, at? }` returns what the frame would show: every candidate with its score breakdown and exclusion reason, the commit decision against the current selection, and the next wakes. Saves nothing |
+| PATCH  | `/admin/v1/locations/{id}`                | `search_radius_nm`, `overhead_radius_m`, `max_altitude_ft`, `is_active` (never coordinates)                                                                                                                                         |
+
+Artwork, images and posters (image links are signed URLs valid for 10 minutes):
+
+| Method    | Path                               |                                                                                                                                                                                        |
+| --------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET       | `/admin/v1/locations?owner_id=`    | a user's locations (never coordinates)                                                                                                                                                 |
+| GET       | `/admin/v1/art-assets`             | artwork across users with image links and passes in the last 30 days it would be used for; filters `owner_id`, `status`, `scope`, `type_code`, `operator`; returns per-status `counts` |
+| POST      | `/admin/v1/art-assets/upload-url`  | `{ owner_id, filename, content_type }` → signed upload into that user's `aircraft-art/<owner>/art/` folder                                                                             |
+| POST      | `/admin/v1/art-assets`             | create artwork for a user from an uploaded file; `approve: true` approves it at once                                                                                                   |
+| GET/PATCH | `/admin/v1/art-assets/{id}`        | edit tags (scope, registration, operator, type, livery, notes); scope rules still apply                                                                                                |
+| POST      | `/admin/v1/art-assets/{id}/review` | `{ status: approved \| rejected \| archived \| pending_review, reviewer_notes? }`; approval requires the file to exist                                                                 |
+| GET       | `/admin/v1/art-coverage`           | passes grouped by owner + operator + type, most-seen first, with the best approved artwork and pending drafts; `owner_id`, `days` (30), `include_near_misses`                          |
+| GET       | `/admin/v1/source-images`          | reference photos with licence/attribution and image links                                                                                                                              |
+| GET       | `/admin/v1/posters`                | posters with preview links, binary status and the frames pinned to them                                                                                                                |
+
+Device detail and display previews include `art_urls` (signed links keyed by
+art asset id) so the board can show each selected plane's artwork.
+
+Your own locations, with coordinates, are edited through the regular
+`/api/v1/locations` routes; the admin board proxies them for the signed-in
+admin only.
+
+The admin board UI (`apps/admin`, `bun run dev:admin`) is built on these
+routes; see the README.
+
 ## Device protocol
 
 `POST /device/v1/setup`, `GET /device/v1/display`, `POST /device/v1/log` —

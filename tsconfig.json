@@ -26,5 +26,6 @@
     "packages/*/src",
     "packages/*/test",
     "tests"
-  ]
+  ],
+  "exclude": ["apps/admin"]
 }

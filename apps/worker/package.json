@@ -10,6 +10,7 @@
   "dependencies": {
     "@overhead/core": "workspace:*",
     "@overhead/database": "workspace:*",
+    "@overhead/display": "workspace:*",
     "@overhead/flight-tracking": "workspace:*"
   }
 }

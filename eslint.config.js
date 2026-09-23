@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/dist/**',
       'supabase/**',
       'packages/database/src/database.types.ts',
+      'apps/admin/src/api-schema.d.ts',
     ],
   },
   js.configs.recommended,

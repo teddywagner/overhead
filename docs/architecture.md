@@ -19,14 +19,16 @@
 
 ## Packages
 
-| Package                     | Responsibility                                                                                                                                                                               |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@overhead/core`            | App name, Zod env schemas, domain enums, geodesy, local dates, redacting logger, storage path rules, artwork precedence                                                                      |
-| `@overhead/database`        | `createUserClient` (acts as the caller, RLS applies), `createAuthClient` (`auth.getClaims`), `createAdminClient` (secret key), `createSql` (Bun's built-in Postgres client), generated types |
-| `@overhead/flight-tracking` | `AircraftPositionProvider` interface, readsb v2 client (adsb.lol, Airplanes.live), mock/scripted providers, the overflight state machine (`processTick`)                                     |
-| `@overhead/device-protocol` | FlightPortrait wire rules: token/secret generation and hashing, telemetry parsing, `/display` contract validation, panel binary verification                                                 |
-| `apps/api`                  | Hono + `@hono/zod-openapi` routes, middleware (request IDs, access log, security headers, CORS allowlist, body limits, rate limits, auth)                                                    |
-| `apps/worker`               | Poll loop, per-location backoff, persistence of passes/overflights, retention scheduling                                                                                                     |
+| Package                     | Responsibility                                                                                                                                                                                                         |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@overhead/core`            | App name, Zod env schemas, domain enums, geodesy, local dates, redacting logger, storage path rules, artwork precedence                                                                                                |
+| `@overhead/database`        | `createUserClient` (acts as the caller, RLS applies), `createAuthClient` (`auth.getClaims`), `createAdminClient` (secret key), `createSql` (Bun's built-in Postgres client), generated types                           |
+| `@overhead/flight-tracking` | `AircraftPositionProvider` interface, readsb v2 client (adsb.lol, Airplanes.live), mock/scripted providers, the overflight state machine (`processTick`)                                                               |
+| `@overhead/display`         | Display selection for frames: settings, scoring and picking (`selectForDisplay`), the dwell rule, quiet-hour wake scheduling; `@overhead/display/sql` holds the trusted queries shared by the worker and the admin API |
+| `@overhead/device-protocol` | FlightPortrait wire rules: token/secret generation and hashing, telemetry parsing, `/display` contract validation, panel binary verification                                                                           |
+| `apps/api`                  | Hono + `@hono/zod-openapi` routes, middleware (request IDs, access log, security headers, CORS allowlist, body limits, rate limits, auth)                                                                              |
+| `apps/admin`                | Temporary admin board (Vite + React) over `/admin/v1`: users, frames, display settings with live preview, selection history                                                                                            |
+| `apps/worker`               | Poll loop, per-location backoff, persistence of passes/overflights, retention scheduling, adsbdb enrichment, display selection                                                                                         |
 
 Provider wire types never leave `packages/flight-tracking/src/providers/*`;
 everything downstream sees `NormalizedAircraftPosition`.
