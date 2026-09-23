@@ -15,6 +15,7 @@ import {
   matchArtAsset,
   pointToSegment,
   providerUserAgent,
+  withPlatformPort,
   redact,
   sanitizeFilename,
   workerEnvSchema,
@@ -90,6 +91,14 @@ describe('environment validation', () => {
         AIRPLANES_LIVE_USER_AGENT: 'legacy/1.0',
       }),
     ).toBe('new/1.0');
+  });
+
+  test('uses the platform PORT when API_PORT is not set', () => {
+    expect(loadEnv(apiEnvSchema, withPlatformPort({ ...valid, PORT: '8080' })).API_PORT).toBe(8080);
+    expect(
+      loadEnv(apiEnvSchema, withPlatformPort({ ...valid, PORT: '8080', API_PORT: '3001' }))
+        .API_PORT,
+    ).toBe(3001);
   });
 
   test('rejects invalid time zones', () => {
