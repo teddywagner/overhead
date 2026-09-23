@@ -30,11 +30,13 @@ coordinates.
 ### Failures and backoff
 
 - Provider requests have a 10 s timeout, a descriptive `User-Agent`
-  (`AIRPLANES_LIVE_USER_AGENT`, required) and are serialised with ≥1.1 s
-  spacing (Airplanes.live allows roughly one request per second).
+  (`AIRCRAFT_PROVIDER_USER_AGENT`, required) and are serialised with ≥1.1 s
+  spacing (public ADS-B APIs allow roughly one request per second).
 - A failing location backs off exponentially: 15 s × 2ⁿ⁻¹, capped at 15 min,
   plus up to 20 % jitter. Other locations keep polling.
 - HTTP 429 honours `Retry-After` and pauses **all** locations (shared quota).
+- HTTP 401/403 (`access_denied`, e.g. a service turning feeder-only) pauses
+  all locations for the maximum backoff (15 min) instead of retrying each poll.
 - A failed transaction leaves the previous state intact; the next tick
   recomputes from what was persisted.
 
@@ -42,7 +44,7 @@ coordinates.
 
 ```ts
 interface AircraftPositionProvider {
-  readonly name: 'airplanes_live' | 'mock';
+  readonly name: 'adsb_lol' | 'airplanes_live' | 'mock';
   getAircraftNear(input: {
     latitude: number;
     longitude: number;
@@ -51,10 +53,13 @@ interface AircraftPositionProvider {
 }
 ```
 
-- **Airplanes.live** (`GET /v2/point/{lat}/{lon}/{radius}`): responses are
-  validated with Zod; invalid entries are skipped; `alt_baro: "ground"` marks
-  ground traffic; the measurement time is `now − seen_pos`; empty strings
-  become `null`. Fixture: `packages/flight-tracking/test/fixtures/airplanes-live-point.json`.
+- **adsb.lol** (default, `AIRCRAFT_PROVIDER=adsb_lol`) and **Airplanes.live**
+  (`airplanes_live`, feeders only since ~August 2026) share one readsb v2
+  client (`providers/readsb-v2.ts`) for `GET /v2/point/{lat}/{lon}/{radius}`:
+  responses are validated with Zod; invalid entries are skipped;
+  `alt_baro: "ground"` marks ground traffic; the measurement time is
+  `now − seen_pos`; empty strings become `null`. Fixture:
+  `packages/flight-tracking/test/fixtures/readsb-v2-point.json`.
 - **Mock** (`AIRCRAFT_PROVIDER=mock`, `MOCK_SCENARIO`): deterministic tracks
   generated relative to the queried point (`direct-crossing`, `near-miss`,
   `busy`), replayed every 15 minutes.

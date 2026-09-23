@@ -136,6 +136,29 @@ describe('worker poller (mock provider, in-memory store)', () => {
     expect(calls).toBe(2);
   });
 
+  test('refused access pauses the provider for the maximum backoff', async () => {
+    let calls = 0;
+    const provider: AircraftPositionProvider = {
+      name: 'adsb_lol',
+      async getAircraftNear() {
+        calls++;
+        throw new ProviderError(
+          'access_denied',
+          'adsb.lol refused access (HTTP 403)',
+          false,
+          null,
+          403,
+        );
+      },
+    };
+    const h = harness({ provider });
+    await h.advance(14 * 60); // 14 minutes of 15-second polls
+    expect(calls).toBe(1);
+    expect(h.store.errors[0]!.errorCode).toBe('access_denied');
+    await h.advance(2 * 60);
+    expect(calls).toBe(2);
+  });
+
   test('errors recorded by the worker contain no coordinates or URLs', async () => {
     const provider: AircraftPositionProvider = {
       name: 'mock',

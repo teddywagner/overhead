@@ -82,13 +82,13 @@ cp .env.example .env
 
 Fill in from `bunx supabase status -o env`:
 
-| Variable                    | Local value                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| `SUPABASE_URL`              | `API_URL` (http://127.0.0.1:54421)                                             |
-| `SUPABASE_PUBLISHABLE_KEY`  | `PUBLISHABLE_KEY` (`sb_publishable_…`)                                         |
-| `SUPABASE_SECRET_KEY`       | `SECRET_KEY` (`sb_secret_…`) — server only                                     |
-| `DATABASE_URL`              | `DB_URL` (postgresql://postgres:postgres@127.0.0.1:54422/postgres)             |
-| `AIRPLANES_LIVE_USER_AGENT` | something descriptive with contact info, e.g. `overhead/0.1 (you@example.com)` |
+| Variable                       | Local value                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| `SUPABASE_URL`                 | `API_URL` (http://127.0.0.1:54421)                                             |
+| `SUPABASE_PUBLISHABLE_KEY`     | `PUBLISHABLE_KEY` (`sb_publishable_…`)                                         |
+| `SUPABASE_SECRET_KEY`          | `SECRET_KEY` (`sb_secret_…`) — server only                                     |
+| `DATABASE_URL`                 | `DB_URL` (postgresql://postgres:postgres@127.0.0.1:54422/postgres)             |
+| `AIRCRAFT_PROVIDER_USER_AGENT` | something descriptive with contact info, e.g. `overhead/0.1 (you@example.com)` |
 
 Both apps validate their environment with Zod on start-up and exit with a
 list of missing/invalid variables (values are never echoed).

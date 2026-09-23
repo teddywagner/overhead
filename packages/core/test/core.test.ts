@@ -14,6 +14,7 @@ import {
   localDate,
   matchArtAsset,
   pointToSegment,
+  providerUserAgent,
   redact,
   sanitizeFilename,
   workerEnvSchema,
@@ -63,12 +64,32 @@ describe('environment validation', () => {
     );
   });
 
-  test('worker requires a User-Agent for Airplanes.live but not for the mock provider', () => {
+  test('worker defaults to adsb.lol and requires a User-Agent for real providers', () => {
     const base = { DATABASE_URL: valid.DATABASE_URL };
-    expect(() => loadEnv(workerEnvSchema, base)).toThrow('AIRPLANES_LIVE_USER_AGENT');
+    expect(() => loadEnv(workerEnvSchema, base)).toThrow('AIRCRAFT_PROVIDER_USER_AGENT');
+    expect(() =>
+      loadEnv(workerEnvSchema, { ...base, AIRCRAFT_PROVIDER: 'airplanes_live' }),
+    ).toThrow('AIRCRAFT_PROVIDER_USER_AGENT');
+    const env = loadEnv(workerEnvSchema, { ...base, AIRCRAFT_PROVIDER_USER_AGENT: 'overhead/0.1' });
+    expect(env.AIRCRAFT_PROVIDER).toBe('adsb_lol');
+    expect(env.ADSB_LOL_BASE_URL).toBe('https://api.adsb.lol');
     expect(loadEnv(workerEnvSchema, { ...base, AIRCRAFT_PROVIDER: 'mock' }).AIRCRAFT_PROVIDER).toBe(
       'mock',
     );
+  });
+
+  test('the legacy AIRPLANES_LIVE_USER_AGENT still satisfies the User-Agent requirement', () => {
+    const env = loadEnv(workerEnvSchema, {
+      DATABASE_URL: valid.DATABASE_URL,
+      AIRPLANES_LIVE_USER_AGENT: 'legacy/1.0',
+    });
+    expect(providerUserAgent(env)).toBe('legacy/1.0');
+    expect(
+      providerUserAgent({
+        AIRCRAFT_PROVIDER_USER_AGENT: 'new/1.0',
+        AIRPLANES_LIVE_USER_AGENT: 'legacy/1.0',
+      }),
+    ).toBe('new/1.0');
   });
 
   test('rejects invalid time zones', () => {

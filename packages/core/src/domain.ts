@@ -33,7 +33,7 @@ export type ArtStatus = (typeof ART_STATUSES)[number];
 export const POSTER_STATUSES = ['draft', 'rendering', 'ready', 'failed', 'archived'] as const;
 export type PosterStatus = (typeof POSTER_STATUSES)[number];
 
-export const PROVIDERS = ['airplanes_live', 'mock'] as const;
+export const PROVIDERS = ['adsb_lol', 'airplanes_live', 'mock'] as const;
 export type ProviderName = (typeof PROVIDERS)[number];
 
 export const icao24Schema = z

@@ -54,11 +54,19 @@ bun apps/worker/dist/index.js    # worker (exactly one instance)
 
 See `.env.example`. Required for the API: `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `DATABASE_URL`. Required for
-the worker: `DATABASE_URL` and, with `AIRCRAFT_PROVIDER=airplanes_live`,
-`AIRPLANES_LIVE_USER_AGENT`. Store secrets in the platform's secret manager.
+the worker: `DATABASE_URL` and, unless `AIRCRAFT_PROVIDER=mock`,
+`AIRCRAFT_PROVIDER_USER_AGENT`. Store secrets in the platform's secret manager.
 
-## Airplanes.live
+## ADS-B provider
 
-The public API is free for non-commercial use and rate limited (about one
-request per second). Keep `WORKER_POLL_INTERVAL_SECONDS × active locations`
-comfortably above that, and use a User-Agent that identifies you.
+The worker defaults to [adsb.lol](https://api.adsb.lol) (free, ODbL data, no
+key today; rate limits are dynamic). adsb.lol has said feeder-issued API keys
+will be required in future, as Airplanes.live already does (non-feeders get
+HTTP 403 since ~August 2026). Requests are spaced ≥1.1 s apart, so keep
+`WORKER_POLL_INTERVAL_SECONDS` comfortably above `1.1 s × active locations`,
+and set `AIRCRAFT_PROVIDER_USER_AGENT` to something that identifies you.
+
+If a provider refuses access (401/403), the worker logs `access_denied` and
+pauses all polling for 15 minutes rather than retrying every poll. Long term,
+a home ADS-B receiver (RTL-SDR + antenna) removes the third-party dependency
+and also earns feeder access.

@@ -10,7 +10,7 @@
    ▼                │ (RLS)       │          │
  ┌───────────── apps/api (Hono on Bun) ──────┴──┐        ┌─ apps/worker (Bun) ─┐
  │ /api/v1/*   user-scoped supabase-js client   │        │ Poller              │
- │ /device/v1/* trusted repo (Bun SQL + secret) │        │  └ provider ──► Airplanes.live
+ │ /device/v1/* trusted repo (Bun SQL + secret) │        │  └ provider ──► adsb.lol
  │ /health /ready /openapi.json                 │        │  └ processTick (pure state machine)
  └──────────────▲───────────────────────────────┘        │  └ PostgresWorkerStore (Bun SQL)
                 │ /device/v1 (FlightPortrait protocol)   └─────────────────────┘
@@ -23,7 +23,7 @@
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@overhead/core`            | App name, Zod env schemas, domain enums, geodesy, local dates, redacting logger, storage path rules, artwork precedence                                                                      |
 | `@overhead/database`        | `createUserClient` (acts as the caller, RLS applies), `createAuthClient` (`auth.getClaims`), `createAdminClient` (secret key), `createSql` (Bun's built-in Postgres client), generated types |
-| `@overhead/flight-tracking` | `AircraftPositionProvider` interface, Airplanes.live adapter, mock/scripted providers, the overflight state machine (`processTick`)                                                          |
+| `@overhead/flight-tracking` | `AircraftPositionProvider` interface, readsb v2 client (adsb.lol, Airplanes.live), mock/scripted providers, the overflight state machine (`processTick`)                                     |
 | `@overhead/device-protocol` | FlightPortrait wire rules: token/secret generation and hashing, telemetry parsing, `/display` contract validation, panel binary verification                                                 |
 | `apps/api`                  | Hono + `@hono/zod-openapi` routes, middleware (request IDs, access log, security headers, CORS allowlist, body limits, rate limits, auth)                                                    |
 | `apps/worker`               | Poll loop, per-location backoff, persistence of passes/overflights, retention scheduling                                                                                                     |
