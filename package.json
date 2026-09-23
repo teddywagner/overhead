@@ -15,6 +15,7 @@
     "dev:api": "bun --watch apps/api/src/index.ts",
     "dev:worker": "bun --watch apps/worker/src/index.ts",
     "dev:admin": "bun run --cwd apps/admin dev",
+    "start": "bun scripts/start.ts",
     "start:api": "bun apps/api/dist/index.js",
     "start:worker": "bun apps/worker/dist/index.js",
     "test": "bun test",
