@@ -11,13 +11,14 @@
 
 ## Trust boundaries
 
-| Actor              | Can                                                                                                  | Cannot                                                                                                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Anonymous internet | `/health`, `/ready`, `/openapi.json` (rate limited), device endpoints with a valid device credential | any `/api/v1` route; any Data API table (anon has no grants)                                              |
-| Authenticated user | own rows via `/api/v1` or PostgREST under RLS; own storage prefix                                    | other users' rows/objects; `private` schema; worker-owned columns (telemetry, binary hashes, overflights) |
-| Frame              | its own display/log/setup                                                                            | anything outside its owner's posters                                                                      |
-| API process        | user-scoped queries with the caller's token; trusted SQL scoped by owner/device; sign device URLs    | —                                                                                                         |
-| Worker             | trusted SQL                                                                                          | receives no user input                                                                                    |
+| Actor              | Can                                                                                                                                 | Cannot                                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Anonymous internet | `/health`, `/ready`, `/openapi.json` (rate limited), device endpoints with a valid device credential                                | any `/api/v1` route; any Data API table (anon has no grants)                                              |
+| Authenticated user | own rows via `/api/v1` or PostgREST under RLS; own storage prefix                                                                   | other users' rows/objects; `private` schema; worker-owned columns (telemetry, binary hashes, overflights) |
+| Admin              | everything a user can, across all owners, through `/admin/v1`: users, frames, telemetry, display settings, location detection rules | see coordinates (admin queries never select them) or credentials                                          |
+| Frame              | its own display/log/setup                                                                                                           | anything outside its owner's posters                                                                      |
+| API process        | user-scoped queries with the caller's token; trusted SQL scoped by owner/device; sign device URLs                                   | —                                                                                                         |
+| Worker             | trusted SQL                                                                                                                         | receives no user input                                                                                    |
 
 ## Threats and mitigations
 
@@ -57,6 +58,16 @@
 - **Token revocation latency**: `auth.getClaims` verifies JWTs locally with
   asymmetric keys, so a signed-out session remains valid until its expiry
   (default 1 hour). Use `auth.getUser` if immediate revocation is required.
+
+- **Admins read across owners.** `/admin/v1` uses the trusted connection
+  behind `requireUser` + `requireAdmin` (membership of `private.admins`,
+  which no Data API role can read or write). Admin queries never select
+  coordinates; an admin sees and edits coordinates only for their own
+  locations, through the ordinary owner-scoped `/api/v1` routes. Admins can
+  also upload artwork into any user's `aircraft-art/<owner>/art/` folder
+  (server-generated paths, validated per owner) and see every user's images
+  through 10-minute signed URLs. Keep the admin list to people you trust with
+  everyone's sightings.
 
 ## Operational checks
 

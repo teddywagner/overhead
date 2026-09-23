@@ -5,3 +5,4 @@ supabase/.temp
 supabase/.branches
 supabase/config.toml
 *.sql
+apps/admin/src/api-schema.d.ts

@@ -29,6 +29,8 @@ const deps = {
   verifyAccessToken: async () => null,
   userClient: unavailable,
   trusted: new Proxy({}, { get: unavailable }),
+  admin: new Proxy({}, { get: unavailable }),
+  adminAssets: new Proxy({}, { get: unavailable }),
   checkDatabase: async () => false,
   rateLimiter: new MemoryRateLimiter(),
 } as unknown as AppDeps;

@@ -15,6 +15,8 @@ import {
   createUserClient,
   pingDatabase,
 } from '@overhead/database';
+import { SqlAdminAssetsRepository } from './admin-assets-repo';
+import { SqlAdminRepository } from './admin-repo';
 import { createApp } from './app';
 import type { AppDeps, VerifiedUser } from './deps';
 import { MemoryRateLimiter } from './lib/rate-limit';
@@ -44,6 +46,8 @@ export function buildDeps(env: ApiEnv): AppDeps & { close(): Promise<void> } {
     verifyAccessToken,
     userClient: (token) => createUserClient(env, token),
     trusted: new SqlTrustedRepository(sql, admin),
+    admin: new SqlAdminRepository(sql),
+    adminAssets: new SqlAdminAssetsRepository(sql, admin),
     checkDatabase: () => pingDatabase(sql),
     rateLimiter: new MemoryRateLimiter(),
     close: () => sql.close(),

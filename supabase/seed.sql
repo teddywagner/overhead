@@ -119,3 +119,11 @@ values ('77777777-0000-4000-8000-000000000001', '11111111-1111-4111-8111-1111111
 insert into private.device_credentials (device_id, setup_secret_hash, enrollment_state)
 values ('77777777-0000-4000-8000-000000000001',
         encode(sha256(convert_to('overhead-local-setup-secret', 'UTF8')), 'hex'), 'pending');
+
+-- ---------------------------------------------------------------------------
+-- Admin board access and display settings for the seed frame
+-- ---------------------------------------------------------------------------
+insert into private.admins (user_id) values ('11111111-1111-4111-8111-111111111111');
+
+insert into public.device_display_settings (device_id, owner_id)
+values ('77777777-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111');

@@ -16,8 +16,11 @@ import {
   noStore,
   rateLimit,
   requestContext,
+  requireAdmin,
   requireUser,
 } from './middleware';
+import { adminRouter } from './routes/admin';
+import { adminAssetsRouter } from './routes/admin-assets';
 import { aircraftRouter } from './routes/aircraft';
 import { artAssetsRouter } from './routes/art-assets';
 import { deviceProtocolRouter } from './routes/device-protocol';
@@ -51,17 +54,20 @@ export function createApp(deps: AppDeps) {
   app.use('*', noStore);
 
   const allowed = new Set(deps.env.CORS_ALLOWED_ORIGINS);
-  app.use(
-    '/api/*',
-    cors({
-      origin: (origin) => (allowed.has(origin) ? origin : null),
-      allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
-      exposeHeaders: ['X-Request-Id', 'Retry-After'],
-      maxAge: 600,
-      credentials: false,
-    }),
-  );
+  const corsFor = (path: string) =>
+    app.use(
+      path,
+      cors({
+        origin: (origin) => (allowed.has(origin) ? origin : null),
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
+        exposeHeaders: ['X-Request-Id', 'Retry-After'],
+        maxAge: 600,
+        credentials: false,
+      }),
+    );
+  corsFor('/api/*');
+  corsFor('/admin/*');
 
   // --- system -------------------------------------------------------------
   const systemLimit = rateLimit(
@@ -105,6 +111,25 @@ export function createApp(deps: AppDeps) {
     devicesRouter,
   ] as unknown as OpenAPIHono<AppEnv>[];
   for (const router of apiRouters) app.route('/api/v1', router);
+
+  // --- admin board (cross-owner; admins only) ----------------------------
+  app.use(
+    '/admin/v1/*',
+    bodyLimit({ maxSize: deps.env.API_BODY_LIMIT_BYTES, onError: apiBodyTooLarge }),
+  );
+  app.use('/admin/v1/*', requireUser);
+  app.use(
+    '/admin/v1/*',
+    rateLimit(
+      (c) => `admin:${c.get('userId')}`,
+      LIMITS.user.limit,
+      LIMITS.user.windowS,
+      apiRateLimited,
+    ),
+  );
+  app.use('/admin/v1/*', requireAdmin);
+  app.route('/admin/v1', adminRouter as unknown as OpenAPIHono<AppEnv>);
+  app.route('/admin/v1', adminAssetsRouter as unknown as OpenAPIHono<AppEnv>);
 
   // --- FlightPortrait-compatible device protocol --------------------------
   app.route('/device/v1', deviceProtocolRouter);

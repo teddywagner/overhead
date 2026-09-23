@@ -2,15 +2,16 @@
 
 Migrations live in `supabase/migrations` and are applied in filename order:
 
-| File                       | Contents                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| `…0100_foundation.sql`     | revoke implicit Data API default privileges; `private` schema; `private.set_updated_at()`     |
-| `…0200_public_tables.sql`  | user-facing tables, indexes, composite ownership FKs, `updated_at` triggers                   |
-| `…0300_private_tables.sql` | device credentials, active passes, poll runs, worker errors, device logs, enrichment attempts |
-| `…0400_grants_and_rls.sql` | explicit least-privilege grants and ownership policies                                        |
-| `…0500_views.sql`          | `public.hangar_aircraft` (security invoker)                                                   |
-| `…0600_storage.sql`        | four private buckets and owner-prefix object policies                                         |
-| `…0700_retention.sql`      | `private.apply_retention(...)`                                                                |
+| File                                | Contents                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------- |
+| `…0100_foundation.sql`              | revoke implicit Data API default privileges; `private` schema; `private.set_updated_at()`     |
+| `…0200_public_tables.sql`           | user-facing tables, indexes, composite ownership FKs, `updated_at` triggers                   |
+| `…0300_private_tables.sql`          | device credentials, active passes, poll runs, worker errors, device logs, enrichment attempts |
+| `…0400_grants_and_rls.sql`          | explicit least-privilege grants and ownership policies                                        |
+| `…0500_views.sql`                   | `public.hangar_aircraft` (security invoker)                                                   |
+| `…0600_storage.sql`                 | four private buckets and owner-prefix object policies                                         |
+| `…0700_retention.sql`               | `private.apply_retention(...)`                                                                |
+| `…0923000400_display_selection.sql` | display settings, display selections, `private.admins`; selection retention                   |
 
 ## Supabase 2026 Data API behaviour
 
@@ -30,19 +31,21 @@ explicit grants. Nothing depends on the project's creation-time setting.
 
 ## Tables (public)
 
-| Table               | Notes                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `profiles`          | `id` = `auth.users.id`; display name, timezone. Created on first `GET /api/v1/profile`.                                                                                                                                                                                                                                                                   |
-| `locations`         | **Coordinates are sensitive.** Radii/altitude limits with range checks; `overhead_radius_m ≤ search_radius_nm × 1852`.                                                                                                                                                                                                                                    |
-| `aircraft`          | Shared reference data keyed by unique `icao24`. Unknown values are `NULL` (text checks forbid empty strings). Visible only to users who observed or annotated the aircraft.                                                                                                                                                                               |
-| `overflights`       | One row per recorded pass. `status` ∈ `qualified`, `near_miss`; `qualification_reason` ∈ `crossed_within_overhead_radius`, `outside_overhead_radius`, `above_max_altitude`, `unknown_altitude`. **Idempotency key** `unique (owner_id, location_id, provider, provider_pass_key)`. `local_date` is the closest-approach date in the location's time zone. |
-| `overflight_points` | Sampled track points (bounded per pass, `unique (overflight_id, observed_at, source)`), subject to retention.                                                                                                                                                                                                                                             |
-| `source_images`     | Reference photos with licence/attribution fields. URLs are metadata only; nothing is fetched.                                                                                                                                                                                                                                                             |
-| `art_assets`        | `scope` ∈ `registration`, `operator_livery`, `operator_type`, `type`, `fallback` with per-scope required fields; `status` ∈ `draft`, `pending_review`, `approved`, `rejected`, `archived`; `approved ⇔ approved_at is not null`.                                                                                                                          |
-| `posters`           | Metadata only. `status` ∈ `draft`, `rendering`, `ready`, `failed`, `archived`; `ready` requires `device_binary_path` and `binary_sha256`.                                                                                                                                                                                                                 |
-| `poster_items`      | Links posters to overflights and art. Carries `owner_id` so RLS is a direct comparison.                                                                                                                                                                                                                                                                   |
-| `aircraft_types`    | Reference data, not user data: ICAO type designator → name, manufacturer, model, class (`helicopter`, `landplane`, …), engine count/type, wake category. Readable by any signed-in user (policy `using (true)`); no user writes. Filled by `bun run db:load-types` (source `tar1090-db`); rows with source `manual` are never overwritten.                |
-| `devices`           | FlightPortrait frames: unique `mac_address`, unique 32-hex `device_ref`, telemetry, poll interval, reset flag.                                                                                                                                                                                                                                            |
+| Table                     | Notes                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profiles`                | `id` = `auth.users.id`; display name, timezone. Created on first `GET /api/v1/profile`.                                                                                                                                                                                                                                                                   |
+| `locations`               | **Coordinates are sensitive.** Radii/altitude limits with range checks; `overhead_radius_m ≤ search_radius_nm × 1852`.                                                                                                                                                                                                                                    |
+| `aircraft`                | Shared reference data keyed by unique `icao24`. Unknown values are `NULL` (text checks forbid empty strings). Visible only to users who observed or annotated the aircraft.                                                                                                                                                                               |
+| `overflights`             | One row per recorded pass. `status` ∈ `qualified`, `near_miss`; `qualification_reason` ∈ `crossed_within_overhead_radius`, `outside_overhead_radius`, `above_max_altitude`, `unknown_altitude`. **Idempotency key** `unique (owner_id, location_id, provider, provider_pass_key)`. `local_date` is the closest-approach date in the location's time zone. |
+| `overflight_points`       | Sampled track points (bounded per pass, `unique (overflight_id, observed_at, source)`), subject to retention.                                                                                                                                                                                                                                             |
+| `source_images`           | Reference photos with licence/attribution fields. URLs are metadata only; nothing is fetched.                                                                                                                                                                                                                                                             |
+| `art_assets`              | `scope` ∈ `registration`, `operator_livery`, `operator_type`, `type`, `fallback` with per-scope required fields; `status` ∈ `draft`, `pending_review`, `approved`, `rejected`, `archived`; `approved ⇔ approved_at is not null`.                                                                                                                          |
+| `posters`                 | Metadata only. `status` ∈ `draft`, `rendering`, `ready`, `failed`, `archived`; `ready` requires `device_binary_path` and `binary_sha256`.                                                                                                                                                                                                                 |
+| `poster_items`            | Links posters to overflights and art. Carries `owner_id` so RLS is a direct comparison.                                                                                                                                                                                                                                                                   |
+| `aircraft_types`          | Reference data, not user data: ICAO type designator → name, manufacturer, model, class (`helicopter`, `landplane`, …), engine count/type, wake category. Readable by any signed-in user (policy `using (true)`); no user writes. Filled by `bun run db:load-types` (source `tar1090-db`); rows with source `manual` are never overwritten.                |
+| `device_display_settings` | One optional row per frame (defaults apply without one): planes at once (1–4), rolling window, minimum time between changes, filters, five scoring weights (0–10), quiet hours (both or neither). See [worker.md](worker.md#display-selection).                                                                                                           |
+| `display_selections`      | Every selection the worker commits for a frame: `overflight_ids` (1–4), `items` (the labels and scores the renderer will receive, no coordinates), a `settings` snapshot, `reason` ∈ `initial`, `changed`. Written only by the worker; the latest row is what the frame should show.                                                                      |
+| `devices`                 | FlightPortrait frames: unique `mac_address`, unique 32-hex `device_ref`, telemetry, poll interval, reset flag.                                                                                                                                                                                                                                            |
 
 ### Ownership integrity
 
@@ -61,6 +64,7 @@ use `ON DELETE SET NULL (column)` so the owner column is never nulled.
 | `provider_poll_runs`  | One row per location poll: status, counts, error code, duration. No coordinates.                                                                                                                                          |
 | `worker_errors`       | Sanitised error records.                                                                                                                                                                                                  |
 | `device_logs`         | Frame log batches (level, ≤512-char message, device timestamp).                                                                                                                                                           |
+| `admins`              | Users allowed to use `/admin/v1`. Grant with `bun run admin:grant EMAIL`.                                                                                                                                                 |
 | `enrichment_attempts` | Lookup log: `kind` = `observation` (first sighting), `aircraft` or `route` (adsbdb lookups, the latter with `overflight_id`). A `success`/`not_found` row stops repeat lookups; `error` rows are retried after an hour.   |
 
 ## Grants and RLS
@@ -77,6 +81,8 @@ Summary (`…0400_grants_and_rls.sql` is authoritative):
 | posters                        | select, delete; insert/update excluding `device_binary_path`, `binary_sha256` | own                                                                              |
 | poster_items                   | select, delete; insert; update (art, order, labels)                           | own + parent poster/overflight owned                                             |
 | devices                        | select, delete; insert/update excluding telemetry                             | own                                                                              |
+| device_display_settings        | select; insert/update on setting columns                                      | select/insert/update own                                                         |
+| display_selections             | select                                                                        | own                                                                              |
 | hangar_aircraft (view)         | select                                                                        | inherits via `security_invoker`                                                  |
 
 `anon` has no grants on any Overhead table. `service_role` has table grants
@@ -96,7 +102,8 @@ path segment to equal `auth.uid()`.
 
 `private.apply_retention(overflight_point_days => 365, device_log_days => 30,
 device_log_max_per_device => 500, poll_run_days => 14, worker_error_days => 30,
-enrichment_days => 90)` deletes expired rows and returns per-table counts. The
+enrichment_days => 90, display_selection_days => 90)` deletes expired rows (each
+frame's latest selection is always kept) and returns per-table counts. The
 worker calls it every `RETENTION_INTERVAL_MINUTES`; it can also be scheduled
 with pg_cron:
 

@@ -223,6 +223,35 @@ describe('GET /device/v1/display', () => {
     expect(((await low.json()) as { sleep_s: number }).sleep_s).toBe(86_400);
   });
 
+  test('timer wakes skip quiet hours; a button press still gets the live window', async () => {
+    // 22:30 in New York: a one-hour sleep would land inside 23:00-06:00.
+    const deps = makeDeps({ clock: () => new Date('2026-09-24T02:30:00Z') });
+    deps.trusted.addDevice({
+      id: DEVICE_ID,
+      mac: MAC,
+      setupSecretHash: hashCredential(SECRET),
+      quietStartHour: 23,
+      quietEndHour: 6,
+    });
+    deps.trusted.posters.push({
+      posterId: 'p',
+      devicePath: 'x/bin/p.bin',
+      sha256: SHA,
+      ownerId: '11111111-1111-4111-8111-111111111111',
+      locationId: '22222222-2222-4222-8222-222222222222',
+    });
+    const app = createApp(deps);
+    const token = await enroll(app);
+    const timer = await app.request('/device/v1/display', {
+      headers: { Authorization: `Bearer ${token}`, 'X-Boot-Reason': 'rtc' },
+    });
+    expect(((await timer.json()) as { sleep_s: number }).sleep_s).toBe(7.5 * 3600);
+    const button = await app.request('/device/v1/display', {
+      headers: { Authorization: `Bearer ${token}`, 'X-Boot-Reason': 'button' },
+    });
+    expect(((await button.json()) as { sleep_s: number }).sleep_s).toBe(300);
+  });
+
   test('a signed URL too long for the firmware buffer yields 503, never a truncated URL', async () => {
     const { app, deps } = setupApp();
     const token = await enroll(app);

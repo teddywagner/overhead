@@ -14,6 +14,7 @@
     "dev": "bun scripts/dev.ts",
     "dev:api": "bun --watch apps/api/src/index.ts",
     "dev:worker": "bun --watch apps/worker/src/index.ts",
+    "dev:admin": "bun run --cwd apps/admin dev",
     "start:api": "bun apps/api/dist/index.js",
     "start:worker": "bun apps/worker/dist/index.js",
     "test": "bun test",
@@ -21,7 +22,7 @@
     "test:integration": "REQUIRE_INTEGRATION=1 bun test --timeout 30000 integration",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/admin/tsconfig.json",
     "build": "bun run --filter '@overhead/api' --filter '@overhead/worker' build",
     "verify": "bun run lint && bun run typecheck && bun run test && bun run build",
     "supabase": "supabase",
@@ -32,7 +33,8 @@
     "db:lint": "supabase db lint --level warning",
     "db:test": "supabase test db",
     "db:load-types": "bun scripts/load-aircraft-types.ts",
-    "openapi": "bun run apps/api/scripts/export-openapi.ts"
+    "openapi": "bun run apps/api/scripts/export-openapi.ts && bun run --cwd apps/admin gen:api",
+    "admin:grant": "bun scripts/grant-admin.ts"
   },
   "trustedDependencies": [
     "supabase"

@@ -1,5 +1,7 @@
 import type { ApiEnv, Logger } from '@overhead/core';
 import type { TypedSupabaseClient } from '@overhead/database';
+import type { AdminAssetsRepository } from './admin-assets-repo';
+import type { AdminRepository } from './admin-repo';
 import type { RateLimiter } from './lib/rate-limit';
 import type { TrustedRepository } from './trusted-repo';
 
@@ -32,6 +34,10 @@ export interface AppDeps {
   userClient(token: string): TypedSupabaseClient;
   /** Trusted server-side operations (private schema, secret key). */
   trusted: TrustedRepository;
+  /** Cross-owner operations for the admin board (behind requireAdmin only). */
+  admin: AdminRepository;
+  /** Cross-owner artwork, images and posters for the admin board. */
+  adminAssets: AdminAssetsRepository;
   /** Probe used by /ready. */
   checkDatabase(): Promise<boolean>;
   rateLimiter: RateLimiter;

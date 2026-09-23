@@ -9,6 +9,7 @@ import {
   isValidTimeZone,
 } from '@overhead/core';
 import type { Json } from '@overhead/database';
+import { DISPLAY_LIMITS, EXCLUSION_REASONS } from '@overhead/display';
 
 const uuid = z.string().uuid();
 const ts = z.string().openapi({ format: 'date-time' });
@@ -615,3 +616,400 @@ export const rotateSecretSchema = z
   .strict();
 
 export const deletedSchema = z.object({ id: uuid, deleted: z.literal(true) }).openapi('Deleted');
+
+// ---------------------------------------------------------------------------
+// Admin board: users, frames and display selection
+// ---------------------------------------------------------------------------
+const weight = z.number().min(DISPLAY_LIMITS.weight.min).max(DISPLAY_LIMITS.weight.max);
+const hour = z.number().int().min(DISPLAY_LIMITS.hour.min).max(DISPLAY_LIMITS.hour.max);
+const bounded = (limits: { min: number; max: number }) =>
+  z.number().int().min(limits.min).max(limits.max);
+
+export const displayWeightsSchema = z
+  .object({
+    rarity: weight,
+    proximity: weight,
+    recency: weight,
+    artwork: weight,
+    detail: weight,
+  })
+  .openapi('DisplayWeights');
+
+const displaySettingsFields = {
+  max_planes: bounded(DISPLAY_LIMITS.max_planes),
+  window_hours: bounded(DISPLAY_LIMITS.window_hours),
+  min_dwell_minutes: bounded(DISPLAY_LIMITS.min_dwell_minutes),
+  include_near_misses: z.boolean(),
+  include_helicopters: z.boolean(),
+  airline_only: z.boolean(),
+  one_per_operator_type: z.boolean(),
+  quiet_start_hour: hour.nullable(),
+  quiet_end_hour: hour.nullable(),
+};
+
+export const displaySettingsSchema = z
+  .object({ ...displaySettingsFields, weights: displayWeightsSchema })
+  .openapi('DisplaySettings');
+
+export const displaySettingsPatchSchema = z
+  .object({ ...displaySettingsFields, weights: displayWeightsSchema.partial().strict() })
+  .partial()
+  .strict()
+  .openapi('DisplaySettingsPatch', {
+    description: 'Fields to change; omitted fields keep their current value.',
+  });
+
+export const artUrlsSchema = z
+  .record(
+    z.string(),
+    z.object({ image_url: z.string().nullable(), thumbnail_url: z.string().nullable() }),
+  )
+  .openapi('ArtUrls', { description: 'Short-lived signed image links keyed by art asset id.' });
+
+export const displayItemSchema = z
+  .object({
+    display_order: z.number().int(),
+    overflight_id: uuid,
+    registration: z.string().nullable(),
+    callsign: z.string().nullable(),
+    flight_number: z.string().nullable(),
+    origin_code: z.string().nullable(),
+    destination_code: z.string().nullable(),
+    origin_name: z.string().nullable().optional(),
+    destination_name: z.string().nullable().optional(),
+    icao_type_code: z.string().nullable(),
+    manufacturer: z.string().nullable(),
+    model: z.string().nullable(),
+    operator_name: z.string().nullable(),
+    operator_icao: z.string().nullable(),
+    closest_seen_at: ts,
+    closest_altitude_ft: z.number().nullable(),
+    minimum_distance_m: z.number(),
+    art_asset_id: uuid.nullable(),
+    art_scope: z.enum(ART_SCOPES).nullable(),
+    score: z.number(),
+  })
+  .openapi('DisplayItem', {
+    description: 'One plane in a selection, as the renderer will receive it. No coordinates.',
+  });
+
+export const adminUserSchema = z
+  .object({
+    id: uuid,
+    email: z.string().nullable(),
+    display_name: z.string().nullable(),
+    created_at: ts,
+    last_sign_in_at: ts.nullable(),
+    is_admin: z.boolean(),
+    device_count: z.number().int(),
+    location_count: z.number().int(),
+    overflight_count: z.number().int(),
+    last_overflight_at: ts.nullable(),
+  })
+  .openapi('AdminUser');
+
+export const adminDeviceSchema = z
+  .object({
+    id: uuid,
+    owner_id: uuid,
+    owner_email: z.string().nullable(),
+    name: z.string(),
+    location_id: uuid.nullable(),
+    location_name: z.string().nullable(),
+    timezone: z.string().nullable(),
+    poll_interval_seconds: z.number().int(),
+    battery_mv: z.number().int().nullable(),
+    rssi: z.number().int().nullable(),
+    firmware_version: z.string().nullable(),
+    last_boot_reason: z.string().nullable(),
+    last_seen_at: ts.nullable(),
+    created_at: ts,
+    enrollment_state: z.string().nullable(),
+    settings: displaySettingsSchema,
+    has_custom_settings: z.boolean(),
+    current_selection: z
+      .object({ selected_at: ts, reason: z.string(), items: z.array(displayItemSchema) })
+      .nullable(),
+    selections_24h: z.number().int(),
+  })
+  .openapi('AdminDevice');
+
+export const adminLocationSchema = z
+  .object({
+    id: uuid,
+    owner_id: uuid,
+    name: z.string(),
+    timezone: z.string(),
+    search_radius_nm: z.number(),
+    overhead_radius_m: z.number().int(),
+    max_altitude_ft: z.number().int(),
+    is_active: z.boolean(),
+  })
+  .openapi('AdminLocation', { description: 'Location detection rules; never coordinates.' });
+
+export const adminDeviceDetailSchema = z
+  // A union, not .nullable(): that would mark the shared AdminLocation component nullable.
+  .object({
+    device: adminDeviceSchema,
+    location: z.union([adminLocationSchema, z.null()]),
+    art_urls: artUrlsSchema,
+  })
+  .openapi('AdminDeviceDetail');
+
+export const adminDeviceUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    poll_interval_seconds: z.number().int().min(60).max(604_800),
+    location_id: uuid.nullable(),
+  })
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, 'at least one field is required')
+  .openapi('AdminDeviceUpdate');
+
+export const adminLocationUpdateSchema = z
+  .object({
+    search_radius_nm: locationFields.search_radius_nm,
+    overhead_radius_m: locationFields.overhead_radius_m,
+    max_altitude_ft: locationFields.max_altitude_ft,
+    is_active: locationFields.is_active,
+  })
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, 'at least one field is required')
+  .openapi('AdminLocationUpdate');
+
+export const adminSelectionSchema = z
+  .object({
+    id: uuid,
+    selected_at: ts,
+    reason: z.string(),
+    items: z.array(displayItemSchema),
+    settings: z.record(z.string(), z.unknown()),
+  })
+  .openapi('DisplaySelection');
+
+export const displayPreviewRequestSchema = z
+  .object({
+    settings: displaySettingsPatchSchema.optional(),
+    poll_interval_seconds: z.number().int().min(60).max(604_800).optional(),
+    at: z.iso
+      .datetime()
+      .optional()
+      .openapi({ description: 'Evaluate as of this instant (default: now).' }),
+  })
+  .strict()
+  .openapi('DisplayPreviewRequest');
+
+export const scoredCandidateSchema = z
+  .object({
+    overflight_id: uuid,
+    icao24: z.string(),
+    registration: z.string().nullable(),
+    callsign: z.string().nullable(),
+    flight_number: z.string().nullable(),
+    origin_code: z.string().nullable(),
+    destination_code: z.string().nullable(),
+    origin_name: z.string().nullable(),
+    destination_name: z.string().nullable(),
+    closest_seen_at: ts,
+    status: z.enum(OVERFLIGHT_STATUSES),
+    minimum_distance_m: z.number(),
+    closest_altitude_ft: z.number().nullable(),
+    icao_type_code: z.string().nullable(),
+    manufacturer: z.string().nullable(),
+    model: z.string().nullable(),
+    operator_name: z.string().nullable(),
+    operator_icao: z.string().nullable(),
+    aircraft_class: z.string().nullable(),
+    art_asset_id: uuid.nullable(),
+    art_scope: z.enum(ART_SCOPES).nullable(),
+    airframe_sightings: z.number().int(),
+    type_sightings: z.number().int().nullable(),
+    score: z.number(),
+    components: z.object({
+      rarity: z.number(),
+      proximity: z.number(),
+      recency: z.number(),
+      artwork: z.number(),
+      detail: z.number(),
+    }),
+    excluded: z.enum(EXCLUSION_REASONS).nullable(),
+  })
+  .openapi('ScoredCandidate');
+
+export const displayPreviewSchema = z
+  .object({
+    at: ts,
+    settings: displaySettingsSchema,
+    poll_interval_seconds: z.number().int(),
+    timezone: z.string(),
+    selected: z.array(displayItemSchema),
+    candidates: z.array(scoredCandidateSchema),
+    current_selection: z.object({ overflight_ids: z.array(uuid), selected_at: ts }).nullable(),
+    decision: z.object({
+      commit: z.boolean(),
+      reason: z.enum(['initial', 'changed', 'unchanged', 'dwell', 'no_candidates']),
+      hold_until: ts.optional(),
+    }),
+    wake_schedule: z.array(ts).openapi({ description: 'Next scheduled (timer) wakes.' }),
+    art_urls: artUrlsSchema,
+  })
+  .openapi('DisplayPreview');
+
+// ---------------------------------------------------------------------------
+// Admin board: artwork, source images, posters, coverage
+// ---------------------------------------------------------------------------
+export const adminArtAssetSchema = z
+  .object({
+    id: uuid,
+    owner_id: uuid,
+    owner_email: z.string().nullable(),
+    aircraft_id: uuid.nullable(),
+    aircraft_registration: z.string().nullable(),
+    icao_type_code: z.string().nullable(),
+    operator_icao: z.string().nullable(),
+    livery_name: z.string().nullable(),
+    registration: z.string().nullable(),
+    scope: z.enum(ART_SCOPES),
+    status: z.enum(ART_STATUSES),
+    source_image_id: uuid.nullable(),
+    storage_path: z.string(),
+    thumbnail_path: z.string().nullable(),
+    generation_provider: z.string().nullable(),
+    generation_model: z.string().nullable(),
+    prompt_version: z.string().nullable(),
+    identity_confidence: z.number().nullable(),
+    reviewer_notes: z.string().nullable(),
+    approved_at: ts.nullable(),
+    created_at: ts,
+    updated_at: ts,
+    sightings_30d: z.number().int(),
+    image_url: z.string().nullable(),
+    thumbnail_url: z.string().nullable(),
+  })
+  .openapi('AdminArtAsset');
+
+export const adminArtListSchema = z
+  .object({
+    items: z.array(adminArtAssetSchema),
+    counts: z.record(z.string(), z.number().int()).openapi({ description: 'Assets per status.' }),
+  })
+  .openapi('AdminArtList');
+
+const artTagFields = {
+  scope: z.enum(ART_SCOPES),
+  icao_type_code: typeCode.nullable(),
+  operator_icao: operatorIcao.nullable(),
+  livery_name: nullableText(120),
+  registration: registration.nullable(),
+  reviewer_notes: z.string().max(2000).nullable(),
+};
+
+export const adminArtUpdateSchema = z
+  .object(artTagFields)
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, 'at least one field is required')
+  .openapi('AdminArtUpdate');
+
+export const adminArtReviewSchema = z
+  .object({
+    status: z.enum(['approved', 'rejected', 'pending_review', 'archived']),
+    reviewer_notes: z.string().max(2000).nullable().optional(),
+  })
+  .strict()
+  .openapi('AdminArtReview');
+
+export const adminArtUploadRequestSchema = imageUploadRequestSchema
+  .extend({ owner_id: uuid })
+  .strict()
+  .openapi('AdminArtUploadRequest');
+
+export const adminArtCreateSchema = z
+  .object({
+    owner_id: uuid,
+    storage_path: z.string().max(300),
+    ...artTagFields,
+    icao_type_code: artTagFields.icao_type_code.optional(),
+    operator_icao: artTagFields.operator_icao.optional(),
+    livery_name: artTagFields.livery_name.optional(),
+    registration: artTagFields.registration.optional(),
+    reviewer_notes: artTagFields.reviewer_notes.optional(),
+    approve: z.boolean().optional().openapi({ description: 'Approve immediately after upload.' }),
+  })
+  .strict()
+  .superRefine((v, ctx) => {
+    const problem = artScopeProblem(v);
+    if (problem) ctx.addIssue({ code: 'custom', message: problem, path: ['scope'] });
+  })
+  .openapi('AdminArtCreate');
+
+export const adminSourceImageSchema = z
+  .object({
+    id: uuid,
+    owner_id: uuid,
+    owner_email: z.string().nullable(),
+    aircraft_id: uuid.nullable(),
+    aircraft_registration: z.string().nullable(),
+    aircraft_type: z.string().nullable(),
+    source_provider: z.string(),
+    source_page_url: z.string().nullable(),
+    original_file_url: z.string().nullable(),
+    storage_path: z.string().nullable(),
+    creator: z.string().nullable(),
+    license_name: z.string().nullable(),
+    license_url: z.string().nullable(),
+    attribution_text: z.string().nullable(),
+    view_angle_score: z.number().nullable(),
+    identity_confidence: z.number().nullable(),
+    created_at: ts,
+    art_count: z.number().int(),
+    image_url: z.string().nullable(),
+  })
+  .openapi('AdminSourceImage');
+
+export const adminPosterSchema = z
+  .object({
+    id: uuid,
+    owner_id: uuid,
+    owner_email: z.string().nullable(),
+    location_name: z.string().nullable(),
+    local_date: z.string(),
+    template_version: z.string(),
+    status: z.string(),
+    has_binary: z.boolean(),
+    binary_verified: z.boolean(),
+    generated_at: ts.nullable(),
+    error: z.string().nullable(),
+    created_at: ts,
+    updated_at: ts,
+    item_count: z.number().int(),
+    pinned_on: z.array(z.string()),
+    full_color_preview_url: z.string().nullable(),
+    eink_preview_url: z.string().nullable(),
+  })
+  .openapi('AdminPoster');
+
+export const coverageRowSchema = z
+  .object({
+    owner_id: uuid,
+    owner_email: z.string().nullable(),
+    operator_icao: z.string().nullable(),
+    operator_name: z.string().nullable(),
+    icao_type_code: z.string().nullable(),
+    manufacturer: z.string().nullable(),
+    model: z.string().nullable(),
+    sightings: z.number().int(),
+    airframes: z.number().int(),
+    last_seen_at: ts,
+    best_scope: z.enum(ART_SCOPES).nullable(),
+    best_art_asset_id: uuid.nullable(),
+    best_thumbnail_url: z.string().nullable(),
+    airframes_with_exact_art: z.number().int(),
+    pending_count: z.number().int(),
+  })
+  .openapi('CoverageRow', {
+    description:
+      'Recorded passes grouped by operator + aircraft type, with the best artwork available.',
+  });

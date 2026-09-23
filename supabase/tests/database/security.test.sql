@@ -74,7 +74,7 @@ select is(
     where n.nspname in ('public', 'private') and p.prosecdef),
   0, 'no SECURITY DEFINER functions');
 
-select ok(not has_function_privilege('authenticated', 'private.apply_retention(integer,integer,integer,integer,integer,integer)', 'execute'),
+select ok(not has_function_privilege('authenticated', 'private.apply_retention(integer,integer,integer,integer,integer,integer,integer)', 'execute'),
   'authenticated cannot execute the retention function');
 
 select is(

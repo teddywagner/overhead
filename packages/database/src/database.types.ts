@@ -189,6 +189,77 @@ export type Database = {
           },
         ];
       };
+      device_display_settings: {
+        Row: {
+          airline_only: boolean;
+          created_at: string;
+          device_id: string;
+          include_helicopters: boolean;
+          include_near_misses: boolean;
+          max_planes: number;
+          min_dwell_minutes: number;
+          one_per_operator_type: boolean;
+          owner_id: string;
+          quiet_end_hour: number | null;
+          quiet_start_hour: number | null;
+          updated_at: string;
+          weight_artwork: number;
+          weight_detail: number;
+          weight_proximity: number;
+          weight_rarity: number;
+          weight_recency: number;
+          window_hours: number;
+        };
+        Insert: {
+          airline_only?: boolean;
+          created_at?: string;
+          device_id: string;
+          include_helicopters?: boolean;
+          include_near_misses?: boolean;
+          max_planes?: number;
+          min_dwell_minutes?: number;
+          one_per_operator_type?: boolean;
+          owner_id: string;
+          quiet_end_hour?: number | null;
+          quiet_start_hour?: number | null;
+          updated_at?: string;
+          weight_artwork?: number;
+          weight_detail?: number;
+          weight_proximity?: number;
+          weight_rarity?: number;
+          weight_recency?: number;
+          window_hours?: number;
+        };
+        Update: {
+          airline_only?: boolean;
+          created_at?: string;
+          device_id?: string;
+          include_helicopters?: boolean;
+          include_near_misses?: boolean;
+          max_planes?: number;
+          min_dwell_minutes?: number;
+          one_per_operator_type?: boolean;
+          owner_id?: string;
+          quiet_end_hour?: number | null;
+          quiet_start_hour?: number | null;
+          updated_at?: string;
+          weight_artwork?: number;
+          weight_detail?: number;
+          weight_proximity?: number;
+          weight_rarity?: number;
+          weight_recency?: number;
+          window_hours?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'device_display_settings_device_fk';
+            columns: ['owner_id', 'device_id'];
+            isOneToOne: false;
+            referencedRelation: 'devices';
+            referencedColumns: ['owner_id', 'id'];
+          },
+        ];
+      };
       devices: {
         Row: {
           battery_mv: number | null;
@@ -260,6 +331,50 @@ export type Database = {
             columns: ['owner_id', 'location_id'];
             isOneToOne: false;
             referencedRelation: 'locations';
+            referencedColumns: ['owner_id', 'id'];
+          },
+        ];
+      };
+      display_selections: {
+        Row: {
+          created_at: string;
+          device_id: string;
+          id: string;
+          items: Json;
+          overflight_ids: string[];
+          owner_id: string;
+          reason: string;
+          selected_at: string;
+          settings: Json;
+        };
+        Insert: {
+          created_at?: string;
+          device_id: string;
+          id?: string;
+          items: Json;
+          overflight_ids: string[];
+          owner_id: string;
+          reason: string;
+          selected_at: string;
+          settings?: Json;
+        };
+        Update: {
+          created_at?: string;
+          device_id?: string;
+          id?: string;
+          items?: Json;
+          overflight_ids?: string[];
+          owner_id?: string;
+          reason?: string;
+          selected_at?: string;
+          settings?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'display_selections_device_fk';
+            columns: ['owner_id', 'device_id'];
+            isOneToOne: false;
+            referencedRelation: 'devices';
             referencedColumns: ['owner_id', 'id'];
           },
         ];
