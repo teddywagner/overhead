@@ -1,0 +1,7 @@
+node_modules
+dist
+bun.lock
+supabase/.temp
+supabase/.branches
+supabase/config.toml
+*.sql

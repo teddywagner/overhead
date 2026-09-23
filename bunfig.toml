@@ -1,0 +1,9 @@
+[install]
+# Hoisted layout keeps node_modules paths short (Windows MAX_PATH) and is
+# friendlier to tooling that walks node_modules.
+linker = "hoisted"
+exact = true
+
+[test]
+root = "."
+preload = ["./tests/setup.ts"]

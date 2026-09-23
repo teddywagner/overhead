@@ -1,0 +1,71 @@
+{
+  "ac": [
+    {
+      "hex": "f00001",
+      "type": "adsb_icao",
+      "flight": "EXA101  ",
+      "r": "N101OH",
+      "t": "B738",
+      "desc": "BOEING 737-800",
+      "ownOp": "Example Air",
+      "alt_baro": 4000,
+      "alt_geom": 4150,
+      "gs": 251.3,
+      "track": 88.2,
+      "lat": 0.50135,
+      "lon": 0.49012,
+      "seen_pos": 1.2,
+      "seen": 0.4,
+      "category": "A3",
+      "dbFlags": 0
+    },
+    {
+      "hex": "f00006",
+      "type": "adsb_icao",
+      "flight": "TAXI1",
+      "r": "N606OH",
+      "t": "B738",
+      "alt_baro": "ground",
+      "gs": 12,
+      "track": 270,
+      "lat": 0.505,
+      "lon": 0.504,
+      "seen_pos": 0.8
+    },
+    {
+      "hex": "~f0000d",
+      "type": "tisb_other",
+      "alt_baro": 2500,
+      "gs": 110,
+      "lat": 0.51,
+      "lon": 0.49,
+      "seen_pos": 3
+    },
+    {
+      "hex": "f00007",
+      "type": "mode_s",
+      "alt_baro": 35000,
+      "seen": 2
+    },
+    {
+      "hex": "not-hex",
+      "lat": 0.5,
+      "lon": 0.5
+    },
+    {
+      "hex": "f00008",
+      "flight": "   ",
+      "r": "",
+      "t": "",
+      "lat": 0.52,
+      "lon": 0.48,
+      "track": 370,
+      "seen_pos": 0
+    }
+  ],
+  "msg": "No error",
+  "now": 1789700000000,
+  "total": 6,
+  "ctime": 1789700000000,
+  "ptime": 3
+}

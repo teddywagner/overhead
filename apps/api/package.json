@@ -1,0 +1,20 @@
+{
+  "name": "@overhead/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun dist/index.js",
+    "build": "bun build src/index.ts --target bun --outdir dist --sourcemap=linked"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "1.6.3",
+    "@overhead/core": "workspace:*",
+    "@overhead/database": "workspace:*",
+    "@overhead/device-protocol": "workspace:*",
+    "@supabase/supabase-js": "2.117.0",
+    "hono": "4.13.8",
+    "zod": "4.6.5"
+  }
+}
