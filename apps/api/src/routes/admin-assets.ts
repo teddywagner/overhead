@@ -1,5 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { ART_SCOPES, ART_STATUSES, AppError, notFound } from '@overhead/core';
+import { ProviderError } from '@overhead/flight-tracking';
 import { uuidParam } from '../lib/db';
 import { ok } from '../lib/envelope';
 import { createRouter, createdResponses, jsonBody, meta, okResponses } from '../lib/router';
@@ -13,8 +14,10 @@ import {
   adminArtUploadRequestSchema,
   adminPosterSchema,
   adminSourceImageSchema,
+  aircraftPhotoSchema,
   artScopeProblem,
   coverageRowSchema,
+  seenAircraftReportSchema,
   uploadUrlSchema,
 } from '../schemas';
 
@@ -209,6 +212,97 @@ export const adminAssetsRouter = createRouter()
         includeNearMisses: q.include_near_misses,
       });
       return ok(c, { items: rows });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: 'get',
+      path: '/seen-aircraft',
+      ...meta(
+        tag,
+        'Planes seen overhead',
+        'Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft ' +
+          'type and by operator. `manufacturer` is a comma-separated list of name prefixes, ' +
+          'e.g. `airbus,boeing`.',
+      ),
+      request: {
+        query: z.object({
+          owner_id: z.string().uuid().optional(),
+          days: z.coerce.number().int().min(1).max(365).default(30),
+          include_near_misses: z
+            .enum(['true', 'false'])
+            .optional()
+            .transform((v) => v === 'true'),
+          type_code: upper(/^[A-Z0-9]{2,4}$/).optional(),
+          operator: upper(/^[A-Z]{3}$/).optional(),
+          manufacturer: z
+            .string()
+            .trim()
+            .regex(/^[A-Za-z][A-Za-z .-]{0,39}(,[A-Za-z][A-Za-z .-]{0,39}){0,9}$/)
+            .optional(),
+          limit: limit(500, 200),
+        }),
+      },
+      responses: okResponses(seenAircraftReportSchema),
+    }),
+    async (c) => {
+      const q = c.req.valid('query');
+      return ok(
+        c,
+        await c.get('deps').adminAssets.seenAircraft({
+          ownerId: q.owner_id,
+          days: q.days,
+          includeNearMisses: q.include_near_misses,
+          typeCode: q.type_code,
+          operatorIcao: q.operator,
+          manufacturers: q.manufacturer?.split(','),
+          limit: q.limit,
+        }),
+      );
+    },
+  )
+  .openapi(
+    createRoute({
+      method: 'get',
+      path: '/aircraft-photos/{icao24}',
+      ...meta(
+        tag,
+        'Photo of an airframe',
+        'Looked up on Planespotters.net by Mode S address, then registration, and cached. ' +
+          'Fails with not_ready when AIRCRAFT_PROVIDER_USER_AGENT is not set or ' +
+          'Planespotters cannot be reached.',
+      ),
+      request: {
+        params: z.object({ icao24: z.string().regex(/^~?[0-9a-fA-F]{6}$/) }),
+        query: z.object({ registration: upper(/^[A-Z0-9-]{1,12}$/).optional() }),
+      },
+      responses: okResponses(aircraftPhotoSchema),
+    }),
+    async (c) => {
+      const { icao24 } = c.req.valid('param');
+      const { registration } = c.req.valid('query');
+      const photos = c.get('deps').aircraftPhotos;
+      if (!photos) {
+        throw new AppError(
+          'not_ready',
+          'Aircraft photos need AIRCRAFT_PROVIDER_USER_AGENT set on the API',
+        );
+      }
+      try {
+        const p = await photos.photo(icao24, registration ?? null);
+        return ok(c, {
+          photo: p && {
+            thumbnail_url: p.thumbnailUrl,
+            large_url: p.largeUrl,
+            page_url: p.pageUrl,
+            photographer: p.photographer,
+          },
+        });
+      } catch (err) {
+        if (!(err instanceof ProviderError)) throw err;
+        c.get('deps').logger.warn('aircraft photo lookup failed', { code: err.code });
+        throw new AppError('not_ready', 'Photo lookup is unavailable right now');
+      }
     },
   )
   .openapi(

@@ -5,6 +5,7 @@ export * from './providers/airplanes-live';
 export * from './providers/adsb-lol';
 export * from './providers/mock';
 export * from './enrichment/adsbdb';
+export * from './enrichment/planespotters';
 export * from './enrichment/aircraft-types';
 export * from './overflight/types';
 export * from './overflight/engine';

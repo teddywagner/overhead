@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { DEFAULT_DISPLAY_SETTINGS, type DisplayCandidate } from '@overhead/display';
+import { ProviderError } from '@overhead/flight-tracking';
 import type { AdminDevice } from '../src/admin-repo';
 import { createApp } from '../src/app';
 import { USER_ID, VALID_TOKEN, makeDeps } from './fakes';
@@ -320,11 +321,78 @@ describe('artwork', () => {
     expect(good.status).toBe(200);
   });
 
+  test('seen aircraft passes normalised filters to the repository', async () => {
+    const { app, deps } = setup();
+    const res = await send(
+      app,
+      'GET',
+      '/admin/v1/seen-aircraft?days=7&type_code=a21n&operator=jbu&manufacturer=Airbus,Boeing',
+    );
+    expect(res.status).toBe(200);
+    expect(deps.adminAssets.seenFilters[0]).toEqual({
+      ownerId: undefined,
+      days: 7,
+      includeNearMisses: false,
+      typeCode: 'A21N',
+      operatorIcao: 'JBU',
+      manufacturers: ['Airbus', 'Boeing'],
+      limit: 200,
+    });
+    for (const bad of ['manufacturer=%27%3Bdrop', 'days=0', 'limit=501', 'operator=JB']) {
+      expect((await send(app, 'GET', `/admin/v1/seen-aircraft?${bad}`)).status).toBe(400);
+    }
+  });
+
+  test('aircraft photos map Planespotters results and fail soft', async () => {
+    const { app, deps } = setup();
+    const path = '/admin/v1/aircraft-photos/a3e07a?registration=n349tv';
+    expect((await send(app, 'GET', path)).status).toBe(503); // not configured
+
+    const asked: Array<[string, string | null]> = [];
+    let fail = false;
+    deps.aircraftPhotos = {
+      async photo(icao24, registration) {
+        asked.push([icao24, registration]);
+        if (fail) throw new ProviderError('rate_limited', 'slow down', true, null, 429);
+        return icao24 === 'a3e07a'
+          ? {
+              thumbnailUrl: 'https://t.test/1_t.jpg',
+              largeUrl: 'https://t.test/1_280.jpg',
+              pageUrl: 'https://p.test/photo/1',
+              photographer: 'Gerrit Griem',
+            }
+          : null;
+      },
+    };
+    type PhotoBody = { data: { photo: unknown } };
+    const res = await send(app, 'GET', path);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as PhotoBody).data.photo).toEqual({
+      thumbnail_url: 'https://t.test/1_t.jpg',
+      large_url: 'https://t.test/1_280.jpg',
+      page_url: 'https://p.test/photo/1',
+      photographer: 'Gerrit Griem',
+    });
+    expect(asked[0]).toEqual(['a3e07a', 'N349TV']);
+
+    const none = await send(app, 'GET', '/admin/v1/aircraft-photos/~2afe91');
+    expect(((await none.json()) as PhotoBody).data.photo).toBeNull();
+    expect(asked[1]).toEqual(['~2afe91', null]);
+
+    fail = true;
+    expect((await send(app, 'GET', path)).status).toBe(503);
+    for (const bad of ['zzzzzz', 'a3e07a?registration=../x']) {
+      expect((await send(app, 'GET', `/admin/v1/aircraft-photos/${bad}`)).status).toBe(400);
+    }
+  });
+
   test('asset routes are admin-only', async () => {
     const { app } = setup({ admin: false });
     for (const path of [
       '/admin/v1/art-assets',
       '/admin/v1/art-coverage',
+      '/admin/v1/seen-aircraft',
+      '/admin/v1/aircraft-photos/a3e07a',
       '/admin/v1/source-images',
       '/admin/v1/posters',
     ]) {

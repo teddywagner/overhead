@@ -5436,6 +5436,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/seen-aircraft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Planes seen overhead
+         * @description Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    owner_id?: string;
+                    days?: number;
+                    include_near_misses?: "true" | "false";
+                    type_code?: string;
+                    operator?: string;
+                    manufacturer?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["SeenAircraftReport"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/aircraft-photos/{icao24}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Photo of an airframe
+         * @description Looked up on Planespotters.net by Mode S address, then registration, and cached. Fails with not_ready when AIRCRAFT_PROVIDER_USER_AGENT is not set or Planespotters cannot be reached.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    registration?: string;
+                };
+                header?: never;
+                path: {
+                    icao24: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["AircraftPhoto"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/source-images": {
         parameters: {
             query?: never;
@@ -6663,6 +6851,54 @@ export interface components {
             best_thumbnail_url: string | null;
             airframes_with_exact_art: number;
             pending_count: number;
+        };
+        /** @description Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes. */
+        SeenAircraftReport: {
+            passes: number;
+            airframes: number;
+            by_type: {
+                icao_type_code: string | null;
+                manufacturer: string | null;
+                model: string | null;
+                passes: number;
+                airframes: number;
+            }[];
+            by_operator: {
+                operator_icao: string | null;
+                operator_name: string | null;
+                passes: number;
+                airframes: number;
+            }[];
+            items: components["schemas"]["SeenAircraft"][];
+        };
+        /** @description One airframe seen overhead in the period. */
+        SeenAircraft: {
+            icao24: string;
+            /** Format: uuid */
+            aircraft_id: string | null;
+            registration: string | null;
+            icao_type_code: string | null;
+            manufacturer: string | null;
+            model: string | null;
+            operator_icao: string | null;
+            operator_name: string | null;
+            country: string | null;
+            passes: number;
+            users: number;
+            /** Format: date-time */
+            first_seen_at: string;
+            /** Format: date-time */
+            last_seen_at: string;
+            closest_distance_m: number;
+        };
+        /** @description A Planespotters.net photo of the airframe, or null when there is none. Show the photographer and link to page_url; hotlink the image, never store it. */
+        AircraftPhoto: {
+            photo: {
+                thumbnail_url: string;
+                large_url: string;
+                page_url: string;
+                photographer: string;
+            } | null;
         };
         AdminSourceImage: {
             /** Format: uuid */

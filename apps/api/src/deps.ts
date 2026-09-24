@@ -2,6 +2,7 @@ import type { ApiEnv, Logger } from '@overhead/core';
 import type { TypedSupabaseClient } from '@overhead/database';
 import type { AdminAssetsRepository } from './admin-assets-repo';
 import type { AdminRepository } from './admin-repo';
+import type { AircraftPhotoLookup } from './lib/aircraft-photos';
 import type { RateLimiter } from './lib/rate-limit';
 import type { TrustedRepository } from './trusted-repo';
 
@@ -38,6 +39,8 @@ export interface AppDeps {
   admin: AdminRepository;
   /** Cross-owner artwork, images and posters for the admin board. */
   adminAssets: AdminAssetsRepository;
+  /** Planespotters photos for the admin board; null when not configured. */
+  aircraftPhotos: AircraftPhotoLookup | null;
   /** Probe used by /ready. */
   checkDatabase(): Promise<boolean>;
   rateLimiter: RateLimiter;

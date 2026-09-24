@@ -62,7 +62,8 @@ Then:
    | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` | ✓   |        |
    | `TRUST_PROXY=true` (Railway sits behind a proxy)                  | ✓   |        |
    | `CORS_ALLOWED_ORIGINS` (your web app's origin, when it exists)    | ✓   |        |
-   | `AIRCRAFT_PROVIDER=adsb_lol`, `AIRCRAFT_PROVIDER_USER_AGENT`      |     | ✓      |
+   | `AIRCRAFT_PROVIDER=adsb_lol`                                      |     | ✓      |
+   | `AIRCRAFT_PROVIDER_USER_AGENT` (API: admin board aircraft photos) | ✓   | ✓      |
    | `WORKER_POLL_INTERVAL_SECONDS=30`                                 |     | ✓      |
 
    Don't set `API_PORT`: Railway provides `PORT` and the API uses it.
@@ -100,7 +101,9 @@ bun apps/worker/dist/index.js    # worker (exactly one instance)
 See `.env.example`. Required for the API: `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `DATABASE_URL`. Required for
 the worker: `DATABASE_URL` and, unless `AIRCRAFT_PROVIDER=mock`,
-`AIRCRAFT_PROVIDER_USER_AGENT`. Store secrets in the platform's secret manager.
+`AIRCRAFT_PROVIDER_USER_AGENT`. The API also uses `AIRCRAFT_PROVIDER_USER_AGENT`
+for the admin board's Planespotters.net photos; without it that one endpoint
+returns `not_ready`. Store secrets in the platform's secret manager.
 
 ## ADS-B provider
 

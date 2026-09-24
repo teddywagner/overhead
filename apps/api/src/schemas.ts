@@ -1013,3 +1013,68 @@ export const coverageRowSchema = z
     description:
       'Recorded passes grouped by operator + aircraft type, with the best artwork available.',
   });
+
+export const seenAircraftSchema = z
+  .object({
+    icao24: z.string(),
+    aircraft_id: uuid.nullable(),
+    registration: z.string().nullable(),
+    icao_type_code: z.string().nullable(),
+    manufacturer: z.string().nullable(),
+    model: z.string().nullable(),
+    operator_icao: z.string().nullable(),
+    operator_name: z.string().nullable(),
+    country: z.string().nullable(),
+    passes: z.number().int(),
+    users: z.number().int(),
+    first_seen_at: ts,
+    last_seen_at: ts,
+    closest_distance_m: z.number(),
+  })
+  .openapi('SeenAircraft', { description: 'One airframe seen overhead in the period.' });
+
+export const aircraftPhotoSchema = z
+  .object({
+    photo: z
+      .object({
+        thumbnail_url: z.string(),
+        large_url: z.string(),
+        page_url: z.string(),
+        photographer: z.string(),
+      })
+      .nullable(),
+  })
+  .openapi('AircraftPhoto', {
+    description:
+      'A Planespotters.net photo of the airframe, or null when there is none. Show the ' +
+      'photographer and link to page_url; hotlink the image, never store it.',
+  });
+
+export const seenAircraftReportSchema = z
+  .object({
+    passes: z.number().int(),
+    airframes: z.number().int(),
+    by_type: z.array(
+      z.object({
+        icao_type_code: z.string().nullable(),
+        manufacturer: z.string().nullable(),
+        model: z.string().nullable(),
+        passes: z.number().int(),
+        airframes: z.number().int(),
+      }),
+    ),
+    by_operator: z.array(
+      z.object({
+        operator_icao: z.string().nullable(),
+        operator_name: z.string().nullable(),
+        passes: z.number().int(),
+        airframes: z.number().int(),
+      }),
+    ),
+    items: z.array(seenAircraftSchema),
+  })
+  .openapi('SeenAircraftReport', {
+    description:
+      'Airframes seen overhead, most-seen first, with pass counts by aircraft type and by ' +
+      'operator (top 50 each) over the same filtered passes.',
+  });

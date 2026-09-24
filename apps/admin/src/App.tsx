@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { api, unwrap } from './api';
+import { Aircraft } from './pages/Aircraft';
 import { Artwork } from './pages/Artwork';
 import { Coverage } from './pages/Coverage';
 import { FrameDetail } from './pages/FrameDetail';
@@ -28,6 +29,7 @@ type Access = 'checking' | 'admin' | 'denied' | 'error';
 
 const NAV = [
   ['frames', 'Frames'],
+  ['aircraft', 'Aircraft'],
   ['artwork', 'Artwork'],
   ['coverage', 'Coverage'],
   ['images', 'Images'],
@@ -38,6 +40,8 @@ const NAV = [
 
 function page(section: string, id: string | undefined, userId: string) {
   switch (section) {
+    case 'aircraft':
+      return <Aircraft />;
     case 'artwork':
       return <Artwork />;
     case 'coverage':
