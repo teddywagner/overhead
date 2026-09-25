@@ -130,7 +130,52 @@ export interface SeenAircraft {
   closest_distance_m: number;
   /** The photo someone picked for this airframe, if any (latest pick wins). */
   saved_photo: SavedPhoto | null;
+  /** Distinct routes it flew overhead, latest first (at most 3). */
+  recent_routes: SeenRoute[];
+  /** The viewer's best photo for this airframe's operator + type slot. */
+  collection_best: CollectionPhoto | null;
 }
+
+export interface SeenRoute {
+  origin_code: string | null;
+  destination_code: string | null;
+  origin_name: string | null;
+  destination_name: string | null;
+  flight_number: string | null;
+  passes: number;
+  last_seen_at: string;
+}
+
+/** A saved photo that is the best for its operator + type slot. */
+export interface CollectionPhoto extends SavedPhoto {
+  icao24: string | null;
+  registration: string | null;
+}
+
+export interface CollectionSlotKey {
+  operator_icao: string | null;
+  icao_type_code: string;
+}
+
+/** One operator + type seen overhead, and the viewer's best photo for it. */
+export interface CollectionSlot extends CollectionSlotKey {
+  operator_name: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  passes: number;
+  airframes: number;
+  best: CollectionPhoto | null;
+}
+
+export type CollectionOutcome =
+  | { status: 'no_type'; slot: null; best: null }
+  | {
+      status: 'added' | 'already_best' | 'kept_existing';
+      slot: CollectionSlotKey;
+      best: CollectionPhoto;
+    };
+
+export type SavedPick = SavedPhoto & { collection: CollectionOutcome };
 
 /** A picked photo, kept as a source image (links only; nothing is downloaded). */
 export interface SavedPhoto {
@@ -177,9 +222,13 @@ export interface SeenAircraftReport {
   by_operator: SeenOperatorCount[];
   /** Most-seen first; capped by the request's limit. */
   items: SeenAircraft[];
+  /** Operator + type slots seen (known types only), most-seen first. */
+  collection: CollectionSlot[];
 }
 
 export interface SeenAircraftFilter {
+  /** The admin asking: whose photo collection to report. */
+  viewerId: string;
   ownerId?: string;
   days: number;
   includeNearMisses: boolean;
@@ -249,10 +298,22 @@ export interface AdminAssetsRepository {
   }): Promise<CoverageRow[]>;
   /** Airframes seen overhead, with pass counts by type and by operator. */
   seenAircraft(filter: SeenAircraftFilter): Promise<SeenAircraftReport>;
-  /** Save a picked photo for an airframe; null when the aircraft is unknown. */
-  savePhotoPick(ownerId: string, icao24: string, pick: PhotoPick): Promise<SavedPhoto | null>;
-  /** Remove a picked photo; false when there is no such pick. */
+  /**
+   * Save a picked photo for an airframe; null when the aircraft is unknown.
+   * Fills the owner's operator + type collection slot when it is empty.
+   */
+  savePhotoPick(ownerId: string, icao24: string, pick: PhotoPick): Promise<SavedPick | null>;
+  /** Remove a picked photo (emptying any slot it fills); false when there is no such pick. */
   deletePhotoPick(id: string): Promise<boolean>;
+  /**
+   * Make one of the owner's saved photos the best for its operator + type
+   * slot. `not_found` when it is not their saved photo; `no_type` when its
+   * aircraft type is unknown.
+   */
+  setCollectionBest(
+    ownerId: string,
+    sourceImageId: string,
+  ): Promise<(CollectionSlotKey & { best: CollectionPhoto }) | 'not_found' | 'no_type'>;
   ownerExists(ownerId: string): Promise<boolean>;
 }
 
@@ -273,6 +334,22 @@ function savedPhoto(r: Row): SavedPhoto {
     license_name: strOrNull(r.license_name),
     license_url: strOrNull(r.license_url),
     created_at: iso(r.created_at)!,
+  };
+}
+
+function collectionPhoto(r: Row): CollectionPhoto {
+  return { ...savedPhoto(r), icao24: strOrNull(r.icao24), registration: strOrNull(r.registration) };
+}
+
+function seenRoute(r: Row): SeenRoute {
+  return {
+    origin_code: strOrNull(r.origin_code),
+    destination_code: strOrNull(r.destination_code),
+    origin_name: strOrNull(r.origin_name),
+    destination_name: strOrNull(r.destination_name),
+    flight_number: strOrNull(r.flight_number),
+    passes: Number(r.passes),
+    last_seen_at: iso(r.last_seen_at)!,
   };
 }
 
@@ -678,6 +755,9 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
     const [r] = (await this.sql`
       with seen as (
         select o.owner_id, o.icao24, o.first_seen_at, o.closest_seen_at, o.minimum_distance_m,
+               o.origin_code, o.destination_code, o.flight_number,
+               o.raw_summary->'route'->>'originName' as origin_name,
+               o.raw_summary->'route'->>'destinationName' as destination_name,
                a.id as aircraft_id, coalesce(a.registration, o.registration) as registration,
                a.icao_type_code, a.manufacturer, a.model, a.operator_icao, a.operator_name,
                a.country
@@ -696,6 +776,21 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
            and (${makers}::text is null or exists (
                  select 1 from unnest(string_to_array(${makers}::text, ',')) m
                   where lower(a.manufacturer) like m || '%'))
+      ),
+      -- The viewer's collection: best photo per operator + type slot.
+      best as (
+        select pc.operator_icao, pc.icao_type_code,
+               jsonb_build_object(
+                 'id', s.id, 'provider', s.source_provider,
+                 'thumbnail_url', s.raw_metadata->>'thumbnail_url',
+                 'image_url', s.original_file_url, 'page_url', s.source_page_url,
+                 'creator', s.creator, 'license_name', s.license_name,
+                 'license_url', s.license_url, 'created_at', s.created_at,
+                 'icao24', sa.icao24, 'registration', sa.registration) as photo
+          from public.photo_collection pc
+          join public.source_images s on s.id = pc.source_image_id
+          left join public.aircraft sa on sa.id = s.aircraft_id
+         where pc.owner_id = ${f.viewerId}::uuid
       )
       select
         (select count(*)::int from seen) as passes,
@@ -710,6 +805,17 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                         count(*)::int as passes, count(distinct icao24)::int as airframes
                    from seen group by operator_icao
                   order by passes desc limit 50) t) as by_operator,
+        (select coalesce(jsonb_agg(t order by t.passes desc, t.operator_icao, t.icao_type_code),
+                         '[]'::jsonb)
+           from (select g.operator_icao, max(g.operator_name) as operator_name, g.icao_type_code,
+                        max(g.manufacturer) as manufacturer, max(g.model) as model,
+                        count(*)::int as passes, count(distinct g.icao24)::int as airframes,
+                        (select b.photo from best b
+                          where b.icao_type_code = g.icao_type_code
+                            and b.operator_icao is not distinct from g.operator_icao) as best
+                   from seen g where g.icao_type_code is not null
+                  group by g.operator_icao, g.icao_type_code
+                  order by passes desc limit 300) t) as collection,
         (select coalesce(jsonb_agg(t order by t.passes desc, t.last_seen_at desc), '[]'::jsonb)
            from (select icao24, max(aircraft_id::text) as aircraft_id,
                         max(registration) as registration, max(icao_type_code) as icao_type_code,
@@ -728,7 +834,23 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                            from public.source_images s
                           where s.aircraft_id = max(seen.aircraft_id::text)::uuid
                             and s.raw_metadata->>'kind' = 'photo_pick'
-                          order by s.created_at desc, s.id desc limit 1) as saved_photo
+                          order by s.created_at desc, s.id desc limit 1) as saved_photo,
+                        (select coalesce(jsonb_agg(rt order by rt.last_seen_at desc), '[]'::jsonb)
+                           from (select x.origin_code, x.destination_code,
+                                        max(x.origin_name) as origin_name,
+                                        max(x.destination_name) as destination_name,
+                                        max(x.flight_number) as flight_number,
+                                        count(*)::int as passes,
+                                        max(x.closest_seen_at) as last_seen_at
+                                   from seen x
+                                  where x.icao24 = seen.icao24
+                                    and (x.origin_code is not null or x.destination_code is not null)
+                                  group by x.origin_code, x.destination_code
+                                  order by last_seen_at desc limit 3) rt) as recent_routes,
+                        (select b.photo from best b
+                          where b.icao_type_code = max(seen.icao_type_code)
+                            and b.operator_icao is not distinct from max(seen.operator_icao))
+                          as collection_best
                    from seen group by icao24
                   order by passes desc, last_seen_at desc limit ${f.limit}) t) as items`) as Row[];
 
@@ -748,6 +870,8 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       last_seen_at: iso(i.last_seen_at)!,
       closest_distance_m: Number(i.closest_distance_m),
       saved_photo: i.saved_photo ? savedPhoto(i.saved_photo as Row) : null,
+      recent_routes: ((i.recent_routes as Row[] | null) ?? []).map(seenRoute),
+      collection_best: i.collection_best ? collectionPhoto(i.collection_best as Row) : null,
     }));
     return {
       passes: Number(r!.passes),
@@ -765,28 +889,77 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
         passes: Number(o.passes),
         airframes: Number(o.airframes),
       })),
+      collection: (r!.collection as Row[]).map((c) => ({
+        operator_icao: strOrNull(c.operator_icao),
+        operator_name: strOrNull(c.operator_name),
+        icao_type_code: String(c.icao_type_code),
+        manufacturer: strOrNull(c.manufacturer),
+        model: strOrNull(c.model),
+        passes: Number(c.passes),
+        airframes: Number(c.airframes),
+        best: c.best ? collectionPhoto(c.best as Row) : null,
+      })),
       items,
     };
   }
 
-  async savePhotoPick(
-    ownerId: string,
-    icao24: string,
-    pick: PhotoPick,
-  ): Promise<SavedPhoto | null> {
+  async savePhotoPick(ownerId: string, icao24: string, pick: PhotoPick): Promise<SavedPick | null> {
     const meta = JSON.stringify({ kind: 'photo_pick', thumbnail_url: pick.thumbnailUrl, icao24 });
-    const rows = (await this.sql`
-      insert into public.source_images
-        (owner_id, aircraft_id, source_provider, source_page_url, original_file_url, creator,
-         license_name, license_url, raw_metadata)
-      select ${ownerId}, a.id, ${pick.provider}, ${pick.pageUrl}, ${pick.imageUrl},
-             ${pick.creator}, ${pick.licenseName}, ${pick.licenseUrl}, ${meta}::jsonb
-        from public.aircraft a
-       where a.icao24 = ${icao24.toLowerCase()}
-      returning id, source_provider as provider, raw_metadata->>'thumbnail_url' as thumbnail_url,
-                original_file_url as image_url, source_page_url as page_url, creator,
-                license_name, license_url, created_at`) as Row[];
-    return rows[0] ? savedPhoto(rows[0]) : null;
+    return this.sql.begin(async (tx) => {
+      const rows = (await tx`
+        insert into public.source_images
+          (owner_id, aircraft_id, source_provider, source_page_url, original_file_url, creator,
+           license_name, license_url, raw_metadata)
+        select ${ownerId}, a.id, ${pick.provider}, ${pick.pageUrl}, ${pick.imageUrl},
+               ${pick.creator}, ${pick.licenseName}, ${pick.licenseUrl}, ${meta}::jsonb
+          from public.aircraft a
+         where a.icao24 = ${icao24.toLowerCase()}
+        returning id, source_provider as provider, raw_metadata->>'thumbnail_url' as thumbnail_url,
+                  original_file_url as image_url, source_page_url as page_url, creator,
+                  license_name, license_url, created_at`) as Row[];
+      if (!rows[0]) return null;
+      const saved = savedPhoto(rows[0]);
+
+      const [ac] = (await tx`
+        select operator_icao, icao_type_code from public.aircraft
+         where icao24 = ${icao24.toLowerCase()}`) as Row[];
+      const typeCode = strOrNull(ac?.icao_type_code);
+      if (!typeCode) {
+        return { ...saved, collection: { status: 'no_type', slot: null, best: null } };
+      }
+      const slot = { operator_icao: strOrNull(ac!.operator_icao), icao_type_code: typeCode };
+      // Fill the slot only when it is empty; otherwise the admin compares.
+      const added = (await tx`
+        insert into public.photo_collection (owner_id, operator_icao, icao_type_code, source_image_id)
+        values (${ownerId}, ${slot.operator_icao}, ${slot.icao_type_code}, ${saved.id})
+        on conflict on constraint photo_collection_slot_key do nothing
+        returning id`) as Row[];
+      const best = await this.collectionBest(tx, ownerId, slot);
+      const status = added.length
+        ? 'added'
+        : best?.id === saved.id
+          ? 'already_best'
+          : 'kept_existing';
+      return { ...saved, collection: { status, slot, best: best! } };
+    });
+  }
+
+  private async collectionBest(
+    sql: Sql,
+    ownerId: string,
+    slot: CollectionSlotKey,
+  ): Promise<CollectionPhoto | null> {
+    const [row] = (await sql`
+      select s.id, s.source_provider as provider, s.raw_metadata->>'thumbnail_url' as thumbnail_url,
+             s.original_file_url as image_url, s.source_page_url as page_url, s.creator,
+             s.license_name, s.license_url, s.created_at, sa.icao24, sa.registration
+        from public.photo_collection pc
+        join public.source_images s on s.id = pc.source_image_id
+        left join public.aircraft sa on sa.id = s.aircraft_id
+       where pc.owner_id = ${ownerId}
+         and pc.icao_type_code = ${slot.icao_type_code}
+         and pc.operator_icao is not distinct from ${slot.operator_icao}::text`) as Row[];
+    return row ? collectionPhoto(row) : null;
   }
 
   async deletePhotoPick(id: string): Promise<boolean> {
@@ -795,6 +968,26 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
        where id = ${id} and raw_metadata->>'kind' = 'photo_pick'
       returning id`) as Row[];
     return rows.length === 1;
+  }
+
+  async setCollectionBest(ownerId: string, sourceImageId: string) {
+    const [pick] = (await this.sql`
+      select a.operator_icao, a.icao_type_code
+        from public.source_images s
+        left join public.aircraft a on a.id = s.aircraft_id
+       where s.id = ${sourceImageId} and s.owner_id = ${ownerId}
+         and s.raw_metadata->>'kind' = 'photo_pick'`) as Row[];
+    if (!pick) return 'not_found' as const;
+    const typeCode = strOrNull(pick.icao_type_code);
+    if (!typeCode) return 'no_type' as const;
+    const slot = { operator_icao: strOrNull(pick.operator_icao), icao_type_code: typeCode };
+    await this.sql`
+      insert into public.photo_collection (owner_id, operator_icao, icao_type_code, source_image_id)
+      values (${ownerId}, ${slot.operator_icao}, ${slot.icao_type_code}, ${sourceImageId})
+      on conflict on constraint photo_collection_slot_key
+      do update set source_image_id = excluded.source_image_id`;
+    const best = await this.collectionBest(this.sql, ownerId, slot);
+    return { ...slot, best: best! };
   }
 
   async ownerExists(ownerId: string): Promise<boolean> {

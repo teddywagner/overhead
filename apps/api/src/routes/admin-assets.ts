@@ -18,8 +18,10 @@ import {
   aircraftPhotoSchema,
   deletedSchema,
   photoCandidatesSchema,
+  photoCollectionEntrySchema,
+  photoCollectionSetSchema,
+  photoPickResultSchema,
   photoPickSchema,
-  savedPhotoSchema,
   artScopeProblem,
   coverageRowSchema,
   seenAircraftReportSchema,
@@ -282,6 +284,7 @@ export const adminAssetsRouter = createRouter()
       return ok(
         c,
         await c.get('deps').adminAssets.seenAircraft({
+          viewerId: c.get('userId'),
           ownerId: q.owner_id,
           days: q.days,
           includeNearMisses: q.include_near_misses,
@@ -322,10 +325,12 @@ export const adminAssetsRouter = createRouter()
         tag,
         'Save a photo for an airframe',
         'image_url must be one of the photos the candidates endpoint lists for this airframe. ' +
-          'Saved as a source image (links only). The latest pick is shown on the Aircraft page.',
+          'Saved as a source image (links only). The latest pick is shown on the Aircraft page. ' +
+          "When your collection has no photo for the aircraft's operator + type yet, this one " +
+          'fills the slot; otherwise `collection` returns the current best to compare against.',
       ),
       request: { params: icao24Param, body: jsonBody(photoPickSchema) },
-      responses: createdResponses(savedPhotoSchema),
+      responses: createdResponses(photoPickResultSchema),
     }),
     async (c) => {
       const { icao24 } = c.req.valid('param');
@@ -337,6 +342,34 @@ export const adminAssetsRouter = createRouter()
       const saved = await deps.adminAssets.savePhotoPick(c.get('userId'), icao24, pick);
       if (!saved) throw notFound('Aircraft');
       return ok(c, saved, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: 'put',
+      path: '/photo-collection',
+      ...meta(
+        tag,
+        'Choose the best photo for an operator + type',
+        "Makes one of your saved photos the best for its aircraft's operator + type slot, " +
+          "replacing the slot's current best.",
+      ),
+      request: { body: jsonBody(photoCollectionSetSchema) },
+      responses: okResponses(photoCollectionEntrySchema),
+    }),
+    async (c) => {
+      const { source_image_id } = c.req.valid('json');
+      const result = await c
+        .get('deps')
+        .adminAssets.setCollectionBest(c.get('userId'), source_image_id);
+      if (result === 'not_found') throw notFound('Saved photo');
+      if (result === 'no_type') {
+        throw new AppError(
+          'validation_failed',
+          'This aircraft’s type is unknown, so it has no collection slot',
+        );
+      }
+      return ok(c, result);
     },
   )
   .openapi(

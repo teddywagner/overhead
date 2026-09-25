@@ -330,6 +330,7 @@ describe('artwork', () => {
     );
     expect(res.status).toBe(200);
     expect(deps.adminAssets.seenFilters[0]).toEqual({
+      viewerId: USER_ID,
       ownerId: undefined,
       days: 7,
       includeNearMisses: false,
@@ -430,15 +431,72 @@ describe('artwork', () => {
     const unknown = '/admin/v1/aircraft-photos/abcdef/picks';
     expect((await send(app, 'POST', unknown, { image_url: offered.imageUrl })).status).toBe(404);
 
+    type Pick = {
+      id: string;
+      license_name: string;
+      collection: { status: string; slot: unknown; best: { id: string } | null };
+    };
     const saved = await send(app, 'POST', picks, { image_url: offered.imageUrl });
     expect(saved.status).toBe(201);
-    const { data } = (await saved.json()) as { data: { id: string; license_name: string } };
+    const { data } = (await saved.json()) as { data: Pick };
     expect(data.license_name).toBe('CC BY 2.0');
     expect(deps.adminAssets.picks[0]).toMatchObject({ owner_id: USER_ID, icao24: 'a3e07a' });
+    // The first photo of a United 737-800 fills that collection slot.
+    expect(data.collection).toMatchObject({
+      status: 'added',
+      slot: { operator_icao: 'UAL', icao_type_code: 'B738' },
+      best: { id: data.id },
+    });
+
+    // A second one keeps the existing best and returns it for comparison...
+    const again = await send(app, 'POST', picks, { image_url: offered.imageUrl });
+    const second = ((await again.json()) as { data: Pick }).data;
+    expect(second.collection).toMatchObject({ status: 'kept_existing', best: { id: data.id } });
+    // ...until the admin chooses it.
+    const choose = await send(app, 'PUT', '/admin/v1/photo-collection', {
+      source_image_id: second.id,
+    });
+    expect(choose.status).toBe(200);
+    expect(((await choose.json()) as { data: unknown }).data).toMatchObject({
+      operator_icao: 'UAL',
+      icao_type_code: 'B738',
+      best: { id: second.id, icao24: 'a3e07a' },
+    });
+    const missing = await send(app, 'PUT', '/admin/v1/photo-collection', {
+      source_image_id: '99999999-9999-4999-8999-999999999999',
+    });
+    expect(missing.status).toBe(404);
 
     const path = `/admin/v1/aircraft-photos/picks/${data.id}`;
     expect((await send(app, 'DELETE', path)).status).toBe(200);
     expect((await send(app, 'DELETE', path)).status).toBe(404);
+  });
+
+  test('a photo of an aircraft with no known type has no collection slot', async () => {
+    const { app, deps } = setup();
+    deps.adminAssets.aircraftSlots.clear();
+    const offered = {
+      provider: 'planespotters' as const,
+      thumbnailUrl: 'https://t.plnspttrs.net/1_280.jpg',
+      imageUrl: 'https://t.plnspttrs.net/1_1000.jpg',
+      pageUrl: 'https://www.planespotters.net/photo/1',
+      creator: 'Someone',
+      licenseName: null,
+      licenseUrl: null,
+    };
+    deps.aircraftPhotos = {
+      photo: async () => null,
+      candidates: async () => ({ items: [offered], failed: [] }),
+    };
+    const res = await send(app, 'POST', '/admin/v1/aircraft-photos/a3e07a/picks', {
+      image_url: offered.imageUrl,
+    });
+    const { data } = (await res.json()) as { data: { id: string; collection: unknown } };
+    expect(data.collection).toEqual({ status: 'no_type', slot: null, best: null });
+    const choose = await send(app, 'PUT', '/admin/v1/photo-collection', {
+      source_image_id: data.id,
+    });
+    expect(choose.status).toBe(400);
   });
 
   test('asset routes are admin-only', async () => {

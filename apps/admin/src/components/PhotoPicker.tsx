@@ -4,7 +4,7 @@ import {
   photoCandidates,
   savePhoto,
   type PhotoCandidate,
-  type SavedPhoto,
+  type PhotoPickResult,
 } from '../planespotters';
 
 /** Every photo on offer for one airframe; pick one to save it. */
@@ -19,7 +19,7 @@ export function PhotoPicker({
   registration: string | null;
   current: string | null;
   onClose: () => void;
-  onSaved: (saved: SavedPhoto) => void;
+  onSaved: (saved: PhotoPickResult) => void;
 }) {
   const [items, setItems] = useState<PhotoCandidate[] | null>(null);
   const [failed, setFailed] = useState<string[]>([]);

@@ -7,6 +7,8 @@ import type {
   AdminSourceImage,
   ArtFields,
   ArtFilter,
+  CollectionPhoto,
+  CollectionSlotKey,
   CoverageRow,
   PhotoPick,
   SavedPhoto,
@@ -222,11 +224,33 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   sourceImages: AdminSourceImage[] = [];
   posters: AdminPoster[] = [];
   coverageRows: CoverageRow[] = [];
-  seen: SeenAircraftReport = { passes: 0, airframes: 0, by_type: [], by_operator: [], items: [] };
+  seen: SeenAircraftReport = {
+    passes: 0,
+    airframes: 0,
+    by_type: [],
+    by_operator: [],
+    items: [],
+    collection: [],
+  };
   seenFilters: SeenAircraftFilter[] = [];
   /** icao24s with an aircraft row; picks for others fail. */
   knownAircraft = new Set<string>(['a3e07a']);
+  /** Operator + type of known aircraft (no entry: type unknown). */
+  aircraftSlots = new Map<string, CollectionSlotKey>([
+    ['a3e07a', { operator_icao: 'UAL', icao_type_code: 'B738' }],
+  ]);
   picks: Array<SavedPhoto & { owner_id: string; icao24: string }> = [];
+  /** Collection slots: `${owner}|${operator}|${type}` → source image id. */
+  slots = new Map<string, string>();
+
+  private slotKey(ownerId: string, s: CollectionSlotKey) {
+    return `${ownerId}|${s.operator_icao ?? ''}|${s.icao_type_code}`;
+  }
+  private best(ownerId: string, s: CollectionSlotKey): CollectionPhoto {
+    const pick = this.picks.find((p) => p.id === this.slots.get(this.slotKey(ownerId, s)))!;
+    const { owner_id: _owner, icao24, ...photo } = pick;
+    return { ...photo, icao24, registration: null };
+  }
 
   async listArt(f: ArtFilter) {
     return this.art
@@ -333,12 +357,27 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
       created_at: new Date().toISOString(),
     };
     this.picks.push({ ...saved, owner_id: ownerId, icao24 });
-    return saved;
+    const slot = this.aircraftSlots.get(icao24.toLowerCase());
+    if (!slot)
+      return { ...saved, collection: { status: 'no_type' as const, slot: null, best: null } };
+    const key = this.slotKey(ownerId, slot);
+    const status = this.slots.has(key) ? ('kept_existing' as const) : ('added' as const);
+    if (status === 'added') this.slots.set(key, saved.id);
+    return { ...saved, collection: { status, slot, best: this.best(ownerId, slot) } };
   }
   async deletePhotoPick(id: string) {
     const before = this.picks.length;
     this.picks = this.picks.filter((p) => p.id !== id);
+    for (const [k, v] of this.slots) if (v === id) this.slots.delete(k);
     return this.picks.length < before;
+  }
+  async setCollectionBest(ownerId: string, sourceImageId: string) {
+    const pick = this.picks.find((p) => p.id === sourceImageId && p.owner_id === ownerId);
+    if (!pick) return 'not_found' as const;
+    const slot = this.aircraftSlots.get(pick.icao24);
+    if (!slot) return 'no_type' as const;
+    this.slots.set(this.slotKey(ownerId, slot), sourceImageId);
+    return { ...slot, best: this.best(ownerId, slot) };
   }
   async seenAircraft(f: SeenAircraftFilter) {
     this.seenFilters.push(f);

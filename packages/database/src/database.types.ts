@@ -576,6 +576,44 @@ export type Database = {
           },
         ];
       };
+      photo_collection: {
+        Row: {
+          created_at: string;
+          icao_type_code: string;
+          id: string;
+          operator_icao: string | null;
+          owner_id: string;
+          source_image_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          icao_type_code: string;
+          id?: string;
+          operator_icao?: string | null;
+          owner_id: string;
+          source_image_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          icao_type_code?: string;
+          id?: string;
+          operator_icao?: string | null;
+          owner_id?: string;
+          source_image_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'photo_collection_source_image_fk';
+            columns: ['owner_id', 'source_image_id'];
+            isOneToOne: false;
+            referencedRelation: 'source_images';
+            referencedColumns: ['owner_id', 'id'];
+          },
+        ];
+      };
       poster_items: {
         Row: {
           art_asset_id: string | null;
