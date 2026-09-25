@@ -5445,7 +5445,7 @@ export interface paths {
         };
         /**
          * Planes seen overhead
-         * @description Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`.
+         * @description Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown.
          */
         get: {
             parameters: {
@@ -5456,6 +5456,7 @@ export interface paths {
                     type_code?: string;
                     operator?: string;
                     manufacturer?: string;
+                    exclude_helicopters?: "true" | "false";
                     limit?: number;
                 };
                 header?: never;
@@ -5527,6 +5528,279 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/aircraft-photos/{icao24}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every photo on offer for an airframe
+         * @description From Planespotters.net, adsbdb (airport-data.com) and Wikimedia Commons (by registration). Sources that fail are listed in `failed`; the rest still return.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    registration?: string;
+                };
+                header?: never;
+                path: {
+                    icao24: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["PhotoCandidates"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/aircraft-photos/{icao24}/picks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save a photo for an airframe
+         * @description image_url must be one of the photos the candidates endpoint lists for this airframe. Saved as a source image (links only). The latest pick is shown on the Aircraft page.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    icao24: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PhotoPick"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["SavedPhoto"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/aircraft-photos/picks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a saved photo */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["Deleted"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -6890,6 +7164,41 @@ export interface components {
             /** Format: date-time */
             last_seen_at: string;
             closest_distance_m: number;
+            saved_photo: components["schemas"]["SavedPhoto"];
+        };
+        /** @description A photo picked for an airframe. Links only; the image is never downloaded. */
+        SavedPhoto: {
+            /** Format: uuid */
+            id: string;
+            provider: string;
+            thumbnail_url: string;
+            image_url: string;
+            page_url: string | null;
+            creator: string | null;
+            license_name: string | null;
+            license_url: string | null;
+            /** Format: date-time */
+            created_at: string;
+        } | null;
+        PhotoCandidates: {
+            items: components["schemas"]["PhotoCandidate"][];
+            failed: ("planespotters" | "wikimedia_commons" | "adsbdb")[];
+        };
+        /** @description A photo on offer for an airframe. */
+        PhotoCandidate: {
+            /** @enum {string} */
+            provider: "planespotters" | "wikimedia_commons" | "adsbdb";
+            thumbnail_url: string;
+            image_url: string;
+            page_url: string;
+            creator: string | null;
+            license_name: string | null;
+            license_url: string | null;
+        };
+        /** @description Pick one of the photos listed by the candidates endpoint, by its image_url. */
+        PhotoPick: {
+            image_url: string;
+            registration?: string;
         };
         /** @description A Planespotters.net photo of the airframe, or null when there is none. Show the photographer and link to page_url; hotlink the image, never store it. */
         AircraftPhoto: {

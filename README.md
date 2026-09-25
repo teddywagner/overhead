@@ -209,8 +209,8 @@ needed. After changing API routes, run `bun run openapi` to refresh
 - Deployment infrastructure (guidance only in `docs/deployment.md`)
 - Aircraft photos outside the admin board, and enrichment beyond adsbdb
   (manufacturer, model, country, operator and routes come from adsbdb; see
-  `docs/worker.md`). The admin board's Aircraft page hotlinks Planespotters.net
-  photos with credit; nothing is stored.
+  `docs/worker.md`). The admin board's Aircraft page hotlinks photos from
+  Planespotters.net, adsbdb and Wikimedia Commons; saved picks keep links only.
 
 ## Documentation
 

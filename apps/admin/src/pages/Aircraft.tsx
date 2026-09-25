@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, unwrap, type Schemas } from '../api';
 import { fmtAgo, fmtNum, planeType } from '../format';
-import { planePhoto, type PlanePhoto } from '../planespotters';
+import { PhotoPicker } from '../components/PhotoPicker';
+import {
+  PROVIDER_LABEL,
+  planePhoto,
+  savePhoto,
+  unsavePhoto,
+  type PlanePhoto,
+  type SavedPhoto,
+} from '../planespotters';
 import { useUsers } from '../useUsers';
 
 type Report = Schemas['SeenAircraftReport'];
@@ -82,12 +90,20 @@ function Distribution({
   );
 }
 
-/** Planespotters photo, fetched once the card scrolls into view. */
-function Photo({ plane }: { plane: Seen }) {
+/**
+ * The card photo: the saved pick when there is one, else Planespotters'
+ * default (fetched once the card scrolls into view). Save keeps the shown
+ * photo; More photos opens the picker.
+ */
+function Photo({ plane, onChange }: { plane: Seen; onChange: (saved: SavedPhoto | null) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [photo, setPhoto] = useState<PlanePhoto | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const saved = plane.saved_photo;
 
   useEffect(() => {
     const el = ref.current;
@@ -100,7 +116,7 @@ function Photo({ plane }: { plane: Seen }) {
   }, []);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || saved) return;
     let live = true;
     planePhoto(plane.icao24, plane.registration)
       .then((p) => live && setPhoto(p))
@@ -108,14 +124,39 @@ function Photo({ plane }: { plane: Seen }) {
     return () => {
       live = false;
     };
-  }, [visible, plane.icao24, plane.registration]);
+  }, [visible, saved, plane.icao24, plane.registration]);
+
+  const act = (run: () => Promise<SavedPhoto | null>) => {
+    setBusy(true);
+    setError('');
+    run()
+      .then(onChange)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setBusy(false));
+  };
+  const save = () =>
+    photo && act(() => savePhoto(plane.icao24, plane.registration, photo.large_url));
+  const unsave = () => saved && act(() => unsavePhoto(saved.id).then(() => null));
+
+  const shown = saved
+    ? { src: saved.thumbnail_url, link: saved.page_url ?? saved.image_url }
+    : photo
+      ? { src: photo.large_url, link: photo.page_url }
+      : null;
+  const credit = saved
+    ? [saved.creator && `© ${saved.creator}`, PROVIDER_LABEL[saved.provider] ?? saved.provider]
+        .filter(Boolean)
+        .join(' · ')
+    : photo
+      ? `© ${photo.photographer} · Planespotters.net`
+      : '\u00a0';
 
   return (
     <div className="plane-photo-wrap">
       <div className="plane-photo" ref={ref}>
-        {photo ? (
-          <a href={photo.page_url} target="_blank" rel="noreferrer">
-            <img src={photo.large_url} alt={plane.registration ?? plane.icao24} loading="lazy" />
+        {shown ? (
+          <a href={shown.link} target="_blank" rel="noreferrer">
+            <img src={shown.src} alt={plane.registration ?? plane.icao24} loading="lazy" />
           </a>
         ) : (
           <span className="muted small">
@@ -126,19 +167,36 @@ function Photo({ plane }: { plane: Seen }) {
                 : 'Loading photo…'}
           </span>
         )}
+        {saved && <span className="badge ok saved-badge">★ Saved</span>}
       </div>
-      <div className="muted small credit">
-        {photo ? (
-          <>
-            © {photo.photographer} ·{' '}
-            <a href={photo.page_url} target="_blank" rel="noreferrer">
-              Planespotters.net
-            </a>
-          </>
+      <div className="muted small credit">{credit}</div>
+      <div className="photo-actions">
+        {saved ? (
+          <button className="ghost small" disabled={busy} onClick={unsave}>
+            Unsave
+          </button>
         ) : (
-          '\u00a0'
+          <button className="ghost small" disabled={busy || !photo} onClick={save}>
+            ★ Save
+          </button>
         )}
+        <button className="ghost small" onClick={() => setPicking(true)}>
+          More photos
+        </button>
       </div>
+      {error && <div className="notice error small">{error}</div>}
+      {picking && (
+        <PhotoPicker
+          icao24={plane.icao24}
+          registration={plane.registration}
+          current={saved?.image_url ?? null}
+          onClose={() => setPicking(false)}
+          onSaved={(p) => {
+            setPicking(false);
+            onChange(p);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -149,6 +207,7 @@ export function Aircraft() {
   const [days, setDays] = useState(30);
   const [makers, setMakers] = useState('');
   const [nearMisses, setNearMisses] = useState(false);
+  const [noHelicopters, setNoHelicopters] = useState(false);
   const [typeCode, setTypeCode] = useState<string | undefined>();
   const [operator, setOperator] = useState<string | undefined>();
   const [report, setReport] = useState<Report | null>(null);
@@ -162,6 +221,7 @@ export function Aircraft() {
             days,
             include_near_misses: nearMisses ? 'true' : 'false',
             limit: 300,
+            exclude_helicopters: noHelicopters ? 'true' : 'false',
             ...(owner ? { owner_id: owner } : {}),
             ...(makers ? { manufacturer: makers } : {}),
             ...(typeCode ? { type_code: typeCode } : {}),
@@ -175,7 +235,7 @@ export function Aircraft() {
         setError('');
       })
       .catch((e: Error) => setError(e.message));
-  }, [owner, days, makers, nearMisses, typeCode, operator]);
+  }, [owner, days, makers, nearMisses, noHelicopters, typeCode, operator]);
 
   useEffect(() => load(), [load]);
 
@@ -232,6 +292,14 @@ export function Aircraft() {
             onChange={(e) => setNearMisses(e.target.checked)}
           />
           include near misses
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={noHelicopters}
+            onChange={(e) => setNoHelicopters(e.target.checked)}
+          />
+          hide helicopters
         </label>
         {typeCode && (
           <button className="ghost small" onClick={() => setTypeCode(undefined)}>
@@ -297,7 +365,20 @@ export function Aircraft() {
           <div className="art-grid">
             {report.items.map((p) => (
               <div key={p.icao24} className="art-card static">
-                <Photo plane={p} />
+                <Photo
+                  plane={p}
+                  onChange={(saved) =>
+                    setReport(
+                      (r) =>
+                        r && {
+                          ...r,
+                          items: r.items.map((i) =>
+                            i.icao24 === p.icao24 ? { ...i, saved_photo: saved } : i,
+                          ),
+                        },
+                    )
+                  }
+                />
                 <div className="art-meta">
                   <div className="strong">{p.registration ?? p.icao24.toUpperCase()}</div>
                   <div>{planeType(p)}</div>
