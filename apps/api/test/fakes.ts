@@ -8,6 +8,8 @@ import type {
   ArtFields,
   ArtFilter,
   CoverageRow,
+  PhotoPick,
+  SavedPhoto,
   SeenAircraftFilter,
   SeenAircraftReport,
   SignedUpload,
@@ -222,6 +224,9 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   coverageRows: CoverageRow[] = [];
   seen: SeenAircraftReport = { passes: 0, airframes: 0, by_type: [], by_operator: [], items: [] };
   seenFilters: SeenAircraftFilter[] = [];
+  /** icao24s with an aircraft row; picks for others fail. */
+  knownAircraft = new Set<string>(['a3e07a']);
+  picks: Array<SavedPhoto & { owner_id: string; icao24: string }> = [];
 
   async listArt(f: ArtFilter) {
     return this.art
@@ -313,6 +318,27 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   }
   async coverage() {
     return this.coverageRows;
+  }
+  async savePhotoPick(ownerId: string, icao24: string, p: PhotoPick) {
+    if (!this.knownAircraft.has(icao24.toLowerCase())) return null;
+    const saved: SavedPhoto = {
+      id: crypto.randomUUID(),
+      provider: p.provider,
+      thumbnail_url: p.thumbnailUrl,
+      image_url: p.imageUrl,
+      page_url: p.pageUrl,
+      creator: p.creator,
+      license_name: p.licenseName,
+      license_url: p.licenseUrl,
+      created_at: new Date().toISOString(),
+    };
+    this.picks.push({ ...saved, owner_id: ownerId, icao24 });
+    return saved;
+  }
+  async deletePhotoPick(id: string) {
+    const before = this.picks.length;
+    this.picks = this.picks.filter((p) => p.id !== id);
+    return this.picks.length < before;
   }
   async seenAircraft(f: SeenAircraftFilter) {
     this.seenFilters.push(f);

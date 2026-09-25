@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { ART_SCOPES, ART_STATUSES, AppError, notFound } from '@overhead/core';
-import { ProviderError } from '@overhead/flight-tracking';
+import { ProviderError, type PhotoCandidate } from '@overhead/flight-tracking';
+import type { AppDeps } from '../deps';
 import { uuidParam } from '../lib/db';
 import { ok } from '../lib/envelope';
 import { createRouter, createdResponses, jsonBody, meta, okResponses } from '../lib/router';
@@ -15,6 +16,10 @@ import {
   adminPosterSchema,
   adminSourceImageSchema,
   aircraftPhotoSchema,
+  deletedSchema,
+  photoCandidatesSchema,
+  photoPickSchema,
+  savedPhotoSchema,
   artScopeProblem,
   coverageRowSchema,
   seenAircraftReportSchema,
@@ -30,6 +35,28 @@ const tag = 'Admin: assets';
 const items = <T extends z.ZodType>(schema: T) => z.object({ items: z.array(schema) });
 const limit = (max: number, dflt: number) => z.coerce.number().int().min(1).max(max).default(dflt);
 const upper = (re: RegExp) => z.string().trim().toUpperCase().regex(re);
+const icao24Param = z.object({ icao24: z.string().regex(/^~?[0-9a-fA-F]{6}$/) });
+const registrationQuery = z.object({ registration: upper(/^[A-Z0-9-]{1,12}$/).optional() });
+
+function photoLookup(deps: AppDeps) {
+  if (!deps.aircraftPhotos) {
+    throw new AppError(
+      'not_ready',
+      'Aircraft photos need AIRCRAFT_PROVIDER_USER_AGENT set on the API',
+    );
+  }
+  return deps.aircraftPhotos;
+}
+
+const candidateJson = (c: PhotoCandidate) => ({
+  provider: c.provider,
+  thumbnail_url: c.thumbnailUrl,
+  image_url: c.imageUrl,
+  page_url: c.pageUrl,
+  creator: c.creator,
+  license_name: c.licenseName,
+  license_url: c.licenseUrl,
+});
 
 export const adminAssetsRouter = createRouter()
   .openapi(
@@ -264,6 +291,65 @@ export const adminAssetsRouter = createRouter()
   .openapi(
     createRoute({
       method: 'get',
+      path: '/aircraft-photos/{icao24}/candidates',
+      ...meta(
+        tag,
+        'Every photo on offer for an airframe',
+        'From Planespotters.net, adsbdb (airport-data.com) and Wikimedia Commons (by ' +
+          'registration). Sources that fail are listed in `failed`; the rest still return.',
+      ),
+      request: { params: icao24Param, query: registrationQuery },
+      responses: okResponses(photoCandidatesSchema),
+    }),
+    async (c) => {
+      const { icao24 } = c.req.valid('param');
+      const { registration } = c.req.valid('query');
+      const found = await photoLookup(c.get('deps')).candidates(icao24, registration ?? null);
+      return ok(c, { items: found.items.map(candidateJson), failed: found.failed });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: 'post',
+      path: '/aircraft-photos/{icao24}/picks',
+      ...meta(
+        tag,
+        'Save a photo for an airframe',
+        'image_url must be one of the photos the candidates endpoint lists for this airframe. ' +
+          'Saved as a source image (links only). The latest pick is shown on the Aircraft page.',
+      ),
+      request: { params: icao24Param, body: jsonBody(photoPickSchema) },
+      responses: createdResponses(savedPhotoSchema),
+    }),
+    async (c) => {
+      const { icao24 } = c.req.valid('param');
+      const { image_url, registration } = c.req.valid('json');
+      const deps = c.get('deps');
+      const { items } = await photoLookup(deps).candidates(icao24, registration ?? null);
+      const pick = items.find((p) => p.imageUrl === image_url);
+      if (!pick) throw notFound('Photo for this aircraft');
+      const saved = await deps.adminAssets.savePhotoPick(c.get('userId'), icao24, pick);
+      if (!saved) throw notFound('Aircraft');
+      return ok(c, saved, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: 'delete',
+      path: '/aircraft-photos/picks/{id}',
+      ...meta(tag, 'Remove a saved photo'),
+      request: { params: uuidParam },
+      responses: okResponses(deletedSchema),
+    }),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      if (!(await c.get('deps').adminAssets.deletePhotoPick(id))) throw notFound('Saved photo');
+      return ok(c, { id, deleted: true as const });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: 'get',
       path: '/aircraft-photos/{icao24}',
       ...meta(
         tag,
@@ -273,21 +359,15 @@ export const adminAssetsRouter = createRouter()
           'Planespotters cannot be reached.',
       ),
       request: {
-        params: z.object({ icao24: z.string().regex(/^~?[0-9a-fA-F]{6}$/) }),
-        query: z.object({ registration: upper(/^[A-Z0-9-]{1,12}$/).optional() }),
+        params: icao24Param,
+        query: registrationQuery,
       },
       responses: okResponses(aircraftPhotoSchema),
     }),
     async (c) => {
       const { icao24 } = c.req.valid('param');
       const { registration } = c.req.valid('query');
-      const photos = c.get('deps').aircraftPhotos;
-      if (!photos) {
-        throw new AppError(
-          'not_ready',
-          'Aircraft photos need AIRCRAFT_PROVIDER_USER_AGENT set on the API',
-        );
-      }
+      const photos = photoLookup(c.get('deps'));
       try {
         const p = await photos.photo(icao24, registration ?? null);
         return ok(c, {

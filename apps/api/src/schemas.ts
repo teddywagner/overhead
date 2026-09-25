@@ -1014,6 +1014,62 @@ export const coverageRowSchema = z
       'Recorded passes grouped by operator + aircraft type, with the best artwork available.',
   });
 
+export const photoProviderSchema = z.enum(['planespotters', 'wikimedia_commons', 'adsbdb']);
+
+export const savedPhotoSchema = z
+  .object({
+    id: uuid,
+    provider: z.string(),
+    thumbnail_url: z.string(),
+    image_url: z.string(),
+    page_url: z.string().nullable(),
+    creator: z.string().nullable(),
+    license_name: z.string().nullable(),
+    license_url: z.string().nullable(),
+    created_at: ts,
+  })
+  .openapi('SavedPhoto', {
+    description: 'A photo picked for an airframe. Links only; the image is never downloaded.',
+  });
+
+export const photoCandidateSchema = z
+  .object({
+    provider: photoProviderSchema,
+    thumbnail_url: z.string(),
+    image_url: z.string(),
+    page_url: z.string(),
+    creator: z.string().nullable(),
+    license_name: z.string().nullable(),
+    license_url: z.string().nullable(),
+  })
+  .openapi('PhotoCandidate', { description: 'A photo on offer for an airframe.' });
+
+export const photoCandidatesSchema = z
+  .object({
+    items: z.array(photoCandidateSchema),
+    /** Sources that could not be reached this time. */
+    failed: z.array(photoProviderSchema),
+  })
+  .openapi('PhotoCandidates');
+
+export const photoPickSchema = z
+  .object({
+    image_url: z
+      .string()
+      .regex(/^https:\/\//)
+      .max(2048),
+    registration: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{1,12}$/)
+      .optional(),
+  })
+  .strict()
+  .openapi('PhotoPick', {
+    description: 'Pick one of the photos listed by the candidates endpoint, by its image_url.',
+  });
+
 export const seenAircraftSchema = z
   .object({
     icao24: z.string(),
@@ -1030,6 +1086,7 @@ export const seenAircraftSchema = z
     first_seen_at: ts,
     last_seen_at: ts,
     closest_distance_m: z.number(),
+    saved_photo: savedPhotoSchema.nullable(),
   })
   .openapi('SeenAircraft', { description: 'One airframe seen overhead in the period.' });
 

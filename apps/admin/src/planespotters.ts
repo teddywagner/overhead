@@ -48,3 +48,32 @@ export function planePhoto(
   }
   return hit;
 }
+
+export type PhotoCandidate = Schemas['PhotoCandidate'];
+export type SavedPhoto = Schemas['SavedPhoto'];
+
+/** Every photo on offer for an airframe, from all sources. */
+export const photoCandidates = (icao24: string, registration: string | null) =>
+  unwrap(
+    api.GET('/admin/v1/aircraft-photos/{icao24}/candidates', {
+      params: { path: { icao24 }, query: registration ? { registration } : {} },
+    }),
+  );
+
+/** Save one of the offered photos as this airframe's pick. */
+export const savePhoto = (icao24: string, registration: string | null, imageUrl: string) =>
+  unwrap(
+    api.POST('/admin/v1/aircraft-photos/{icao24}/picks', {
+      params: { path: { icao24 } },
+      body: { image_url: imageUrl, ...(registration ? { registration } : {}) },
+    }),
+  );
+
+export const unsavePhoto = (id: string) =>
+  unwrap(api.DELETE('/admin/v1/aircraft-photos/picks/{id}', { params: { path: { id } } }));
+
+export const PROVIDER_LABEL: Record<string, string> = {
+  planespotters: 'Planespotters.net',
+  wikimedia_commons: 'Wikimedia Commons',
+  adsbdb: 'airport-data.com (adsbdb)',
+};

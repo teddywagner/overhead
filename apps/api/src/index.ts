@@ -16,7 +16,13 @@ import {
   createUserClient,
   pingDatabase,
 } from '@overhead/database';
-import { PlanespottersClient } from '@overhead/flight-tracking';
+import {
+  ADSBDB_DEFAULT_BASE_URL,
+  AdsbdbClient,
+  PlanespottersClient,
+  WIKIMEDIA_COMMONS_DEFAULT_BASE_URL,
+  WikimediaCommonsClient,
+} from '@overhead/flight-tracking';
 import { SqlAdminAssetsRepository } from './admin-assets-repo';
 import { SqlAdminRepository } from './admin-repo';
 import { createApp } from './app';
@@ -45,9 +51,14 @@ export function buildDeps(env: ApiEnv): AppDeps & { close(): Promise<void> } {
 
   const userAgent = providerUserAgent(env);
   const aircraftPhotos = userAgent
-    ? new CachedAircraftPhotos(
-        new PlanespottersClient({ baseUrl: env.PLANESPOTTERS_BASE_URL, userAgent }),
-      )
+    ? new CachedAircraftPhotos({
+        planespotters: new PlanespottersClient({ baseUrl: env.PLANESPOTTERS_BASE_URL, userAgent }),
+        adsbdb: new AdsbdbClient({ baseUrl: ADSBDB_DEFAULT_BASE_URL, userAgent }),
+        commons: new WikimediaCommonsClient({
+          baseUrl: WIKIMEDIA_COMMONS_DEFAULT_BASE_URL,
+          userAgent,
+        }),
+      })
     : null;
 
   return {

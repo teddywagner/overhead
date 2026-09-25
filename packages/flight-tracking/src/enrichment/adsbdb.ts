@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { normalizeRegistration, normalizeText, normalizeTypeCode } from '../normalize';
 import { ProviderError } from '../types';
 import { parseRetryAfter } from '../providers/readsb-v2';
+import type { PhotoCandidate } from './wikimedia-commons';
 
 /**
  * adsbdb (https://www.adsbdb.com): free, open-source aircraft and
@@ -96,6 +97,32 @@ export function parseAdsbdbAircraft(body: unknown): AircraftDetails | null {
   };
 }
 
+const photoSchema = z.object({ url_photo: str, url_photo_thumbnail: str }).loose();
+
+/**
+ * adsbdb's airframe photo (hosted by airport-data.com). It comes without a
+ * photographer or photo page, so the image itself is the link.
+ */
+export function parseAdsbdbPhoto(body: unknown): PhotoCandidate | null {
+  const env = envelopeSchema.safeParse(body);
+  if (!env.success)
+    throw new ProviderError('invalid_response', 'adsbdb response failed validation', true);
+  const inner = z.object({ aircraft: photoSchema }).safeParse(env.data.response);
+  if (!inner.success) return null;
+  const https = (v: string | null | undefined) => (v && /^https:\/\//.test(v) ? v : null);
+  const image = https(inner.data.aircraft.url_photo);
+  if (!image) return null;
+  return {
+    provider: 'adsbdb',
+    thumbnailUrl: https(inner.data.aircraft.url_photo_thumbnail) ?? image,
+    imageUrl: image,
+    pageUrl: image,
+    creator: null,
+    licenseName: null,
+    licenseUrl: null,
+  };
+}
+
 export function parseAdsbdbRoute(body: unknown): FlightRoute | null {
   const env = envelopeSchema.safeParse(body);
   if (!env.success)
@@ -150,6 +177,13 @@ export class AdsbdbClient {
     const hex = icao24.replace(/^~/, '').toUpperCase();
     if (!/^[0-9A-F]{6}$/.test(hex) || icao24.startsWith('~')) return Promise.resolve(null);
     return this.enqueue(`/v0/aircraft/${hex}`, parseAdsbdbAircraft);
+  }
+
+  /** adsbdb's photo of the airframe; null when it has none. */
+  photo(icao24: string): Promise<PhotoCandidate | null> {
+    const hex = icao24.toUpperCase();
+    if (!/^[0-9A-F]{6}$/.test(hex)) return Promise.resolve(null);
+    return this.enqueue(`/v0/aircraft/${hex}`, parseAdsbdbPhoto);
   }
 
   /** Route and airline for a callsign; null when unknown. */

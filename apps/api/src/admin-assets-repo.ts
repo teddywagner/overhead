@@ -128,6 +128,31 @@ export interface SeenAircraft {
   first_seen_at: string;
   last_seen_at: string;
   closest_distance_m: number;
+  /** The photo someone picked for this airframe, if any (latest pick wins). */
+  saved_photo: SavedPhoto | null;
+}
+
+/** A picked photo, kept as a source image (links only; nothing is downloaded). */
+export interface SavedPhoto {
+  id: string;
+  provider: string;
+  thumbnail_url: string;
+  image_url: string;
+  page_url: string | null;
+  creator: string | null;
+  license_name: string | null;
+  license_url: string | null;
+  created_at: string;
+}
+
+export interface PhotoPick {
+  provider: string;
+  thumbnailUrl: string;
+  imageUrl: string;
+  pageUrl: string;
+  creator: string | null;
+  licenseName: string | null;
+  licenseUrl: string | null;
 }
 
 export interface SeenTypeCount {
@@ -222,6 +247,10 @@ export interface AdminAssetsRepository {
   }): Promise<CoverageRow[]>;
   /** Airframes seen overhead, with pass counts by type and by operator. */
   seenAircraft(filter: SeenAircraftFilter): Promise<SeenAircraftReport>;
+  /** Save a picked photo for an airframe; null when the aircraft is unknown. */
+  savePhotoPick(ownerId: string, icao24: string, pick: PhotoPick): Promise<SavedPhoto | null>;
+  /** Remove a picked photo; false when there is no such pick. */
+  deletePhotoPick(id: string): Promise<boolean>;
   ownerExists(ownerId: string): Promise<boolean>;
 }
 
@@ -230,6 +259,20 @@ const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
 const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 const strOrNull = (v: unknown) => (v === null || v === undefined ? null : String(v));
 const PENDING: ArtStatus[] = ['draft', 'pending_review'];
+
+function savedPhoto(r: Row): SavedPhoto {
+  return {
+    id: String(r.id),
+    provider: String(r.provider),
+    thumbnail_url: String(r.thumbnail_url ?? r.image_url),
+    image_url: String(r.image_url),
+    page_url: strOrNull(r.page_url),
+    creator: strOrNull(r.creator),
+    license_name: strOrNull(r.license_name),
+    license_url: strOrNull(r.license_url),
+    created_at: iso(r.created_at)!,
+  };
+}
 
 /** Whether an art asset applies to an operator + type group (registration scope aside). */
 function coversGroup(
@@ -447,7 +490,7 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
              ac.registration as aircraft_registration, ac.icao_type_code as aircraft_type,
              s.source_provider, s.source_page_url, s.original_file_url, s.storage_path, s.creator,
              s.license_name, s.license_url, s.attribution_text, s.view_angle_score,
-             s.identity_confidence, s.created_at,
+             s.identity_confidence, s.created_at, s.raw_metadata->>'thumbnail_url' as link_thumb,
              (select count(*)::int from public.art_assets a where a.source_image_id = s.id) as art_count
         from public.source_images s
         left join auth.users u on u.id = s.owner_id
@@ -478,7 +521,10 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       identity_confidence: numOrNull(r.identity_confidence),
       created_at: iso(r.created_at)!,
       art_count: Number(r.art_count),
-      image_url: r.storage_path ? (urls.get(String(r.storage_path)) ?? null) : null,
+      // Picked photos are links only: show their remote thumbnail.
+      image_url: r.storage_path
+        ? (urls.get(String(r.storage_path)) ?? null)
+        : strOrNull(r.link_thumb),
     }));
   }
 
@@ -665,7 +711,17 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                         max(country) as country, count(*)::int as passes,
                         count(distinct owner_id)::int as users,
                         min(first_seen_at) as first_seen_at, max(closest_seen_at) as last_seen_at,
-                        min(minimum_distance_m) as closest_distance_m
+                        min(minimum_distance_m) as closest_distance_m,
+                        (select jsonb_build_object(
+                                  'id', s.id, 'provider', s.source_provider,
+                                  'thumbnail_url', s.raw_metadata->>'thumbnail_url',
+                                  'image_url', s.original_file_url, 'page_url', s.source_page_url,
+                                  'creator', s.creator, 'license_name', s.license_name,
+                                  'license_url', s.license_url, 'created_at', s.created_at)
+                           from public.source_images s
+                          where s.aircraft_id = max(seen.aircraft_id::text)::uuid
+                            and s.raw_metadata->>'kind' = 'photo_pick'
+                          order by s.created_at desc, s.id desc limit 1) as saved_photo
                    from seen group by icao24
                   order by passes desc, last_seen_at desc limit ${f.limit}) t) as items`) as Row[];
 
@@ -684,6 +740,7 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       first_seen_at: iso(i.first_seen_at)!,
       last_seen_at: iso(i.last_seen_at)!,
       closest_distance_m: Number(i.closest_distance_m),
+      saved_photo: i.saved_photo ? savedPhoto(i.saved_photo as Row) : null,
     }));
     return {
       passes: Number(r!.passes),
@@ -703,6 +760,34 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       })),
       items,
     };
+  }
+
+  async savePhotoPick(
+    ownerId: string,
+    icao24: string,
+    pick: PhotoPick,
+  ): Promise<SavedPhoto | null> {
+    const meta = JSON.stringify({ kind: 'photo_pick', thumbnail_url: pick.thumbnailUrl, icao24 });
+    const rows = (await this.sql`
+      insert into public.source_images
+        (owner_id, aircraft_id, source_provider, source_page_url, original_file_url, creator,
+         license_name, license_url, raw_metadata)
+      select ${ownerId}, a.id, ${pick.provider}, ${pick.pageUrl}, ${pick.imageUrl},
+             ${pick.creator}, ${pick.licenseName}, ${pick.licenseUrl}, ${meta}::jsonb
+        from public.aircraft a
+       where a.icao24 = ${icao24.toLowerCase()}
+      returning id, source_provider as provider, raw_metadata->>'thumbnail_url' as thumbnail_url,
+                original_file_url as image_url, source_page_url as page_url, creator,
+                license_name, license_url, created_at`) as Row[];
+    return rows[0] ? savedPhoto(rows[0]) : null;
+  }
+
+  async deletePhotoPick(id: string): Promise<boolean> {
+    const rows = (await this.sql`
+      delete from public.source_images
+       where id = ${id} and raw_metadata->>'kind' = 'photo_pick'
+      returning id`) as Row[];
+    return rows.length === 1;
   }
 
   async ownerExists(ownerId: string): Promise<boolean> {

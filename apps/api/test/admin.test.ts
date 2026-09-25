@@ -363,6 +363,7 @@ describe('artwork', () => {
             }
           : null;
       },
+      candidates: async () => ({ items: [], failed: [] }),
     };
     type PhotoBody = { data: { photo: unknown } };
     const res = await send(app, 'GET', path);
@@ -384,6 +385,59 @@ describe('artwork', () => {
     for (const bad of ['zzzzzz', 'a3e07a?registration=../x']) {
       expect((await send(app, 'GET', `/admin/v1/aircraft-photos/${bad}`)).status).toBe(400);
     }
+  });
+
+  test('photos can be picked from the offered candidates and unpicked', async () => {
+    const { app, deps } = setup();
+    const offered = {
+      provider: 'wikimedia_commons' as const,
+      thumbnailUrl: 'https://upload.test/thumb.jpg',
+      imageUrl: 'https://upload.test/full.jpg',
+      pageUrl: 'https://commons.test/File:N349TV.jpg',
+      creator: 'Someone',
+      licenseName: 'CC BY 2.0',
+      licenseUrl: 'https://creativecommons.org/licenses/by/2.0',
+    };
+    deps.aircraftPhotos = {
+      photo: async () => null,
+      candidates: async () => ({ items: [offered], failed: ['adsbdb'] }),
+    };
+    const list = await send(app, 'GET', '/admin/v1/aircraft-photos/a3e07a/candidates');
+    expect(((await list.json()) as { data: unknown }).data).toEqual({
+      items: [
+        {
+          provider: 'wikimedia_commons',
+          thumbnail_url: offered.thumbnailUrl,
+          image_url: offered.imageUrl,
+          page_url: offered.pageUrl,
+          creator: 'Someone',
+          license_name: 'CC BY 2.0',
+          license_url: offered.licenseUrl,
+        },
+      ],
+      failed: ['adsbdb'],
+    });
+
+    const picks = '/admin/v1/aircraft-photos/a3e07a/picks';
+    // Only photos the server offered for this airframe can be saved.
+    expect((await send(app, 'POST', picks, { image_url: 'https://evil.test/x.jpg' })).status).toBe(
+      404,
+    );
+    expect(
+      (await send(app, 'POST', picks, { image_url: 'http://upload.test/full.jpg' })).status,
+    ).toBe(400);
+    const unknown = '/admin/v1/aircraft-photos/abcdef/picks';
+    expect((await send(app, 'POST', unknown, { image_url: offered.imageUrl })).status).toBe(404);
+
+    const saved = await send(app, 'POST', picks, { image_url: offered.imageUrl });
+    expect(saved.status).toBe(201);
+    const { data } = (await saved.json()) as { data: { id: string; license_name: string } };
+    expect(data.license_name).toBe('CC BY 2.0');
+    expect(deps.adminAssets.picks[0]).toMatchObject({ owner_id: USER_ID, icao24: 'a3e07a' });
+
+    const path = `/admin/v1/aircraft-photos/picks/${data.id}`;
+    expect((await send(app, 'DELETE', path)).status).toBe(200);
+    expect((await send(app, 'DELETE', path)).status).toBe(404);
   });
 
   test('asset routes are admin-only', async () => {

@@ -785,3 +785,40 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.plane-photo {
+  position: relative;
+}
+.saved-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+.photo-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 0;
+}
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.pick {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+}
+.pick.on {
+  border-color: var(--ok);
+}
+.pick .plane-photo {
+  border-radius: 6px;
+}
+.credit-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
