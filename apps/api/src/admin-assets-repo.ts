@@ -187,6 +187,8 @@ export interface SeenAircraftFilter {
   operatorIcao?: string;
   /** Restrict to these manufacturers (case-insensitive). */
   manufacturers?: string[];
+  /** Leave out helicopters. */
+  excludeHelicopters?: boolean;
   limit: number;
 }
 
@@ -681,11 +683,16 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                a.country
           from public.overflights o
           left join public.aircraft a on a.id = o.aircraft_id
+          left join public.aircraft_types ty on ty.icao_type_code = a.icao_type_code
          where o.closest_seen_at > now() - make_interval(days => ${f.days})
            and (o.status = 'qualified' or ${f.includeNearMisses})
            and (${f.ownerId ?? null}::uuid is null or o.owner_id = ${f.ownerId ?? null}::uuid)
            and (${f.typeCode ?? null}::text is null or a.icao_type_code = ${f.typeCode ?? null})
            and (${f.operatorIcao ?? null}::text is null or a.operator_icao = ${f.operatorIcao ?? null})
+           -- Helicopters: the ICAO type class when the type is known, else the maker.
+           and not (${f.excludeHelicopters ?? false} and coalesce(
+                 ty.aircraft_class = 'helicopter'
+                 or lower(a.manufacturer) ~ '^(bell|eurocopter|airbus helicopters)\\M', false))
            and (${makers}::text is null or exists (
                  select 1 from unnest(string_to_array(${makers}::text, ',')) m
                   where lower(a.manufacturer) like m || '%'))

@@ -336,6 +336,7 @@ describe('artwork', () => {
       typeCode: 'A21N',
       operatorIcao: 'JBU',
       manufacturers: ['Airbus', 'Boeing'],
+      excludeHelicopters: false,
       limit: 200,
     });
     for (const bad of ['manufacturer=%27%3Bdrop', 'days=0', 'limit=501', 'operator=JB']) {

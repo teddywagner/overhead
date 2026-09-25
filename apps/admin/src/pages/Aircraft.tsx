@@ -207,6 +207,7 @@ export function Aircraft() {
   const [days, setDays] = useState(30);
   const [makers, setMakers] = useState('');
   const [nearMisses, setNearMisses] = useState(false);
+  const [noHelicopters, setNoHelicopters] = useState(false);
   const [typeCode, setTypeCode] = useState<string | undefined>();
   const [operator, setOperator] = useState<string | undefined>();
   const [report, setReport] = useState<Report | null>(null);
@@ -220,6 +221,7 @@ export function Aircraft() {
             days,
             include_near_misses: nearMisses ? 'true' : 'false',
             limit: 300,
+            exclude_helicopters: noHelicopters ? 'true' : 'false',
             ...(owner ? { owner_id: owner } : {}),
             ...(makers ? { manufacturer: makers } : {}),
             ...(typeCode ? { type_code: typeCode } : {}),
@@ -233,7 +235,7 @@ export function Aircraft() {
         setError('');
       })
       .catch((e: Error) => setError(e.message));
-  }, [owner, days, makers, nearMisses, typeCode, operator]);
+  }, [owner, days, makers, nearMisses, noHelicopters, typeCode, operator]);
 
   useEffect(() => load(), [load]);
 
@@ -290,6 +292,14 @@ export function Aircraft() {
             onChange={(e) => setNearMisses(e.target.checked)}
           />
           include near misses
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={noHelicopters}
+            onChange={(e) => setNoHelicopters(e.target.checked)}
+          />
+          hide helicopters
         </label>
         {typeCode && (
           <button className="ghost small" onClick={() => setTypeCode(undefined)}>
