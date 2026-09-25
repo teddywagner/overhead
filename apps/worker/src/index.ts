@@ -10,7 +10,7 @@ import {
   workerEnvSchema,
   type WorkerEnv,
 } from '@overhead/core';
-import { createSql, type Sql } from '@overhead/database';
+import { createAdminClient, createSql, type Sql } from '@overhead/database';
 import {
   AdsbLolProvider,
   AdsbdbClient,
@@ -19,6 +19,9 @@ import {
   MockAircraftProvider,
   type AircraftPositionProvider,
 } from '@overhead/flight-tracking';
+import { RembgRemover, RemoveBgRemover, type BackgroundRemover } from './background-removers';
+import { PostgresCutoutStore } from './cutout-store';
+import { CutoutWorker } from './cutouts';
 import { DisplayScheduler, PostgresDisplayStore } from './display-scheduler';
 import { Enricher } from './enricher';
 import { PostgresEnrichmentStore } from './enrichment-store';
@@ -55,6 +58,29 @@ export function createEnricher(env: WorkerEnv, sql: Sql, logger: Logger): Enrich
   });
 }
 
+/** Background removal for requested cutouts, unless CUTOUT_PROVIDER=none. */
+export function createCutoutWorker(env: WorkerEnv, sql: Sql, logger: Logger): CutoutWorker | null {
+  if (env.CUTOUT_PROVIDER === 'none') return null;
+  const remover: BackgroundRemover =
+    env.CUTOUT_PROVIDER === 'rembg'
+      ? new RembgRemover({ baseUrl: env.CUTOUT_REMBG_URL, model: env.CUTOUT_REMBG_MODEL })
+      : new RemoveBgRemover({ apiKey: env.CUTOUT_REMOVE_BG_API_KEY });
+  const storage = createAdminClient({
+    SUPABASE_URL: env.SUPABASE_URL,
+    SUPABASE_SECRET_KEY: env.SUPABASE_SECRET_KEY,
+    SUPABASE_PUBLISHABLE_KEY: '',
+  });
+  return new CutoutWorker({
+    remover,
+    store: new PostgresCutoutStore(sql, storage),
+    logger,
+    intervalS: env.CUTOUT_INTERVAL_SECONDS,
+    batchSize: 3,
+    // Wikimedia asks for a descriptive User-Agent with contact details.
+    userAgent: providerUserAgent(env) || `${appSlug(env)}/${APP_VERSION}`,
+  });
+}
+
 async function main(): Promise<void> {
   let env: WorkerEnv;
   try {
@@ -84,6 +110,7 @@ async function main(): Promise<void> {
     logger,
     intervalS: env.DISPLAY_INTERVAL_SECONDS,
   });
+  const cutouts = createCutoutWorker(env, sql, logger);
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
@@ -93,6 +120,7 @@ async function main(): Promise<void> {
     poller.stop();
     enricher?.stop();
     display.stop();
+    cutouts?.stop();
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
@@ -104,9 +132,10 @@ async function main(): Promise<void> {
     poll_interval_s: env.WORKER_POLL_INTERVAL_SECONDS,
     enrichment: enricher ? 'adsbdb' : 'off',
     display_interval_s: env.DISPLAY_INTERVAL_SECONDS,
+    cutouts: env.CUTOUT_PROVIDER,
   });
   try {
-    await Promise.all([poller.start(), enricher?.start(), display.start()]);
+    await Promise.all([poller.start(), enricher?.start(), display.start(), cutouts?.start()]);
   } catch (err) {
     logger.error('worker crashed', { error: safeMessage(err) });
     process.exitCode = 1;

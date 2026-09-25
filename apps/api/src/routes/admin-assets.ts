@@ -445,6 +445,29 @@ export const adminAssetsRouter = createRouter()
   )
   .openapi(
     createRoute({
+      method: 'post',
+      path: '/source-images/{id}/cutout',
+      ...meta(
+        tag,
+        'Remove a photo’s background',
+        'Queues a background-removed copy (a "cutout") for the worker, or re-queues it. ' +
+          'The worker needs CUTOUT_PROVIDER set. Refused when the photo’s licence does not ' +
+          'allow edited copies (see `cutout_refusal`): Planespotters.net and airport-data.com ' +
+          'photos may only be linked to.',
+      ),
+      request: { params: uuidParam },
+      responses: okResponses(adminSourceImageSchema),
+    }),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      const result = await c.get('deps').adminAssets.requestCutout(id);
+      if (result === 'not_found') throw notFound('Source image');
+      if ('refused' in result) throw new AppError('validation_failed', result.refused);
+      return ok(c, result);
+    },
+  )
+  .openapi(
+    createRoute({
       method: 'get',
       path: '/posters',
       ...meta(tag, 'Posters across users, with previews and binary status'),

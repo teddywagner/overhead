@@ -6082,6 +6082,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/source-images/{id}/cutout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove a photo’s background
+         * @description Queues a background-removed copy (a "cutout") for the worker, or re-queues it. The worker needs CUTOUT_PROVIDER set. Refused when the photo’s licence does not allow edited copies (see `cutout_refusal`): Planespotters.net and airport-data.com photos may only be linked to.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["AdminSourceImage"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/posters": {
         parameters: {
             query?: never;
@@ -7438,6 +7528,21 @@ export interface components {
             created_at: string;
             art_count: number;
             image_url: string | null;
+            /** @description The background-removed copy, if one was requested. */
+            cutout: {
+                /** @enum {string} */
+                status: "pending" | "processing" | "done" | "failed";
+                /** @description Signed link to the transparent PNG once done (valid 10 minutes). */
+                image_url: string | null;
+                error: string | null;
+                attempts: number;
+                /** Format: date-time */
+                requested_at: string;
+                /** Format: date-time */
+                processed_at: string | null;
+            } | null;
+            /** @description Why this photo may not be cut out (its licence), or null when it may. */
+            cutout_refusal: string | null;
         };
         AdminPoster: {
             /** Format: uuid */

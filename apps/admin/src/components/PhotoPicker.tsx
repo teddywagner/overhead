@@ -74,7 +74,18 @@ export function PhotoPicker({
                   <a className="plane-photo" href={c.page_url} target="_blank" rel="noreferrer">
                     <img src={c.thumbnail_url} alt="" loading="lazy" />
                   </a>
-                  <div className="small">{PROVIDER_LABEL[c.provider] ?? c.provider}</div>
+                  <div className="small">
+                    {PROVIDER_LABEL[c.provider] ?? c.provider}
+                    {c.provider === 'wikimedia_commons' && (
+                      <span
+                        className="badge ok"
+                        title="Free licence: its background can be removed on the Images page"
+                      >
+                        {' '}
+                        ✂ cutout OK
+                      </span>
+                    )}
+                  </div>
                   <div className="muted small credit-line">
                     {[c.creator && `© ${c.creator}`, c.license_name].filter(Boolean).join(' · ') ||
                       'No credit given'}

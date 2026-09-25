@@ -194,6 +194,31 @@ portrait renderer (next phase); until then frames keep serving posters.
 Settings live in `public.device_display_settings` and are edited from the
 admin board, whose preview runs exactly this code with draft settings.
 
+## Cutouts (background removal)
+
+When `CUTOUT_PROVIDER` is `rembg` or `remove_bg`, a `CutoutWorker` runs beside
+the poller (`apps/worker/src/cutouts.ts`). Every `CUTOUT_INTERVAL_SECONDS` it
+claims up to 3 queued `public.image_cutouts` rows (`for update skip locked`)
+and for each:
+
+1. re-checks the photo's licence (`cutoutRefusal` in `@overhead/core`): the
+   owner's uploads and Wikimedia Commons photos only, never ND licences;
+2. reads the photo: an upload from Storage, or the linked file (for Commons,
+   the 2048 px rendering, falling back to the original), JPEG/PNG/WebP up to
+   20 MB, with the provider User-Agent;
+3. sends it to the background remover (`background-removers.ts`) and checks
+   that a PNG came back;
+4. stores it at `<owner>/cutout/<source_image_id>.png` in `source-images`
+   (overwriting any earlier cutout) and marks the row `done`.
+
+Failures are recorded on the row. Retryable ones (remover or download
+outages, 5xx) are tried again after 2, then 4 minutes, up to 3 attempts;
+permanent ones (not an image, too large, licence) stop at once. A rate limit
+from the remover pauses the loop for at least 10 minutes (or `Retry-After`)
+and hands the rest of the batch back. Rows left `processing` by a crashed
+worker fail after 15 minutes and are retried. Requesting a cutout again resets
+its attempts.
+
 ## Idempotency and restarts
 
 - All pass state lives in `private.active_passes`; a restarted worker simply

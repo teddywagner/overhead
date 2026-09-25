@@ -3365,6 +3365,46 @@
           },
           "image_url": {
             "type": ["string", "null"]
+          },
+          "cutout": {
+            "type": ["object", "null"],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["pending", "processing", "done", "failed"]
+              },
+              "image_url": {
+                "type": ["string", "null"],
+                "description": "Signed link to the transparent PNG once done (valid 10 minutes)."
+              },
+              "error": {
+                "type": ["string", "null"]
+              },
+              "attempts": {
+                "type": "integer"
+              },
+              "requested_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "processed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "status",
+              "image_url",
+              "error",
+              "attempts",
+              "requested_at",
+              "processed_at"
+            ],
+            "description": "The background-removed copy, if one was requested."
+          },
+          "cutout_refusal": {
+            "type": ["string", "null"],
+            "description": "Why this photo may not be cut out (its licence), or null when it may."
           }
         },
         "required": [
@@ -3386,7 +3426,9 @@
           "identity_confidence",
           "created_at",
           "art_count",
-          "image_url"
+          "image_url",
+          "cutout",
+          "cutout_refusal"
         ]
       },
       "AdminPoster": {
@@ -11005,6 +11047,104 @@
                         }
                       },
                       "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/source-images/{id}/cutout": {
+      "post": {
+        "tags": ["Admin: assets"],
+        "summary": "Remove a photo’s background",
+        "description": "Queues a background-removed copy (a \"cutout\") for the worker, or re-queues it. The worker needs CUTOUT_PROVIDER set. Refused when the photo’s licence does not allow edited copies (see `cutout_refusal`): Planespotters.net and airport-data.com photos may only be linked to.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminSourceImage"
                     },
                     "error": {
                       "type": "null"

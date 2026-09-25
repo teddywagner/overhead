@@ -379,6 +379,59 @@ export type Database = {
           },
         ];
       };
+      image_cutouts: {
+        Row: {
+          attempts: number;
+          created_at: string;
+          error: string | null;
+          id: string;
+          owner_id: string;
+          processed_at: string | null;
+          provider: string | null;
+          requested_at: string;
+          source_image_id: string;
+          status: string;
+          storage_path: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          attempts?: number;
+          created_at?: string;
+          error?: string | null;
+          id?: string;
+          owner_id: string;
+          processed_at?: string | null;
+          provider?: string | null;
+          requested_at?: string;
+          source_image_id: string;
+          status?: string;
+          storage_path?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          attempts?: number;
+          created_at?: string;
+          error?: string | null;
+          id?: string;
+          owner_id?: string;
+          processed_at?: string | null;
+          provider?: string | null;
+          requested_at?: string;
+          source_image_id?: string;
+          status?: string;
+          storage_path?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'image_cutouts_source_image_fk';
+            columns: ['owner_id', 'source_image_id'];
+            isOneToOne: false;
+            referencedRelation: 'source_images';
+            referencedColumns: ['owner_id', 'id'];
+          },
+        ];
+      };
       locations: {
         Row: {
           created_at: string;

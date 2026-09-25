@@ -499,6 +499,55 @@ describe('artwork', () => {
     expect(choose.status).toBe(400);
   });
 
+  test('cutouts are queued only for photos whose licence allows edited copies', async () => {
+    const { app, deps } = setup();
+    const image = (id: string, source_provider: string, license_name: string | null) => ({
+      id,
+      owner_id: USER_ID,
+      owner_email: null,
+      aircraft_id: null,
+      aircraft_registration: null,
+      aircraft_type: null,
+      source_provider,
+      source_page_url: null,
+      original_file_url: 'https://upload.test/full.jpg',
+      storage_path: null,
+      creator: null,
+      license_name,
+      license_url: null,
+      attribution_text: null,
+      view_angle_score: null,
+      identity_confidence: null,
+      created_at: new Date().toISOString(),
+      art_count: 0,
+      image_url: null,
+      cutout: null,
+      cutout_refusal: null,
+    });
+    const commons = '55555555-5555-4555-8555-555555555555';
+    const spotted = '66666666-6666-4666-8666-666666666666';
+    deps.adminAssets.sourceImages.push(
+      image(commons, 'wikimedia_commons', 'CC BY-SA 4.0'),
+      image(spotted, 'planespotters', null),
+    );
+    const ok = await send(app, 'POST', `/admin/v1/source-images/${commons}/cutout`);
+    expect(ok.status).toBe(200);
+    expect(((await ok.json()) as { data: { cutout: unknown } }).data.cutout).toMatchObject({
+      status: 'pending',
+    });
+    const refused = await send(app, 'POST', `/admin/v1/source-images/${spotted}/cutout`);
+    expect(refused.status).toBe(400);
+    expect(((await refused.json()) as { error: { message: string } }).error.message).toMatch(
+      /Planespotters/,
+    );
+    const missing = await send(
+      app,
+      'POST',
+      '/admin/v1/source-images/77777777-7777-4777-8777-777777777777/cutout',
+    );
+    expect(missing.status).toBe(404);
+  });
+
   test('asset routes are admin-only', async () => {
     const { app } = setup({ admin: false });
     for (const path of [

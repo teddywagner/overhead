@@ -1,4 +1,4 @@
-import { createLogger, type Logger } from '@overhead/core';
+import { createLogger, cutoutRefusal, type Logger } from '@overhead/core';
 import type { TypedSupabaseClient } from '@overhead/database';
 import type {
   AdminArtAsset,
@@ -336,6 +336,21 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   }
   async listSourceImages() {
     return this.sourceImages;
+  }
+  async requestCutout(id: string) {
+    const image = this.sourceImages.find((i) => i.id === id);
+    if (!image) return 'not_found' as const;
+    const refused = cutoutRefusal(image);
+    if (refused) return { refused };
+    image.cutout = {
+      status: 'pending' as const,
+      image_url: null,
+      error: null,
+      attempts: 0,
+      requested_at: new Date().toISOString(),
+      processed_at: null,
+    };
+    return image;
   }
   async listPosters() {
     return this.posters;

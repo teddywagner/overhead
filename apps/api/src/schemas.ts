@@ -2,6 +2,7 @@ import { z } from '@hono/zod-openapi';
 import {
   ART_SCOPES,
   ART_STATUSES,
+  CUTOUT_STATUSES,
   IMAGE_CONTENT_TYPES,
   OVERFLIGHT_STATUSES,
   POSTER_STATUSES,
@@ -982,6 +983,24 @@ export const adminSourceImageSchema = z
     created_at: ts,
     art_count: z.number().int(),
     image_url: z.string().nullable(),
+    cutout: z
+      .object({
+        status: z.enum(CUTOUT_STATUSES),
+        image_url: z
+          .string()
+          .nullable()
+          .describe('Signed link to the transparent PNG once done (valid 10 minutes).'),
+        error: z.string().nullable(),
+        attempts: z.number().int(),
+        requested_at: ts,
+        processed_at: ts.nullable(),
+      })
+      .nullable()
+      .describe('The background-removed copy, if one was requested.'),
+    cutout_refusal: z
+      .string()
+      .nullable()
+      .describe('Why this photo may not be cut out (its licence), or null when it may.'),
   })
   .openapi('AdminSourceImage');
 

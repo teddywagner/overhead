@@ -1,10 +1,12 @@
 import {
   BUCKETS,
+  cutoutRefusal,
   matchArtAsset,
   type ArtCandidate,
   type ArtScope,
   type ArtStatus,
   type BucketName,
+  type CutoutStatus,
 } from '@overhead/core';
 import type { Sql, TypedSupabaseClient } from '@overhead/database';
 import { SIGNED_UPLOAD_TTL_SECONDS } from './lib/storage';
@@ -67,6 +69,20 @@ export interface AdminSourceImage {
   created_at: string;
   art_count: number;
   image_url: string | null;
+  /** The background-removed copy, if one was requested. */
+  cutout: Cutout | null;
+  /** Why this photo may not be cut out (its licence), or null when it may. */
+  cutout_refusal: string | null;
+}
+
+export interface Cutout {
+  status: CutoutStatus;
+  /** Signed link to the transparent PNG once done. */
+  image_url: string | null;
+  error: string | null;
+  attempts: number;
+  requested_at: string;
+  processed_at: string | null;
 }
 
 export interface AdminPoster {
@@ -289,7 +305,19 @@ export interface AdminAssetsRepository {
   artUrls(
     ids: string[],
   ): Promise<Record<string, { image_url: string | null; thumbnail_url: string | null }>>;
-  listSourceImages(filter: { ownerId?: string; limit: number }): Promise<AdminSourceImage[]>;
+  listSourceImages(filter: {
+    id?: string;
+    ownerId?: string;
+    limit: number;
+  }): Promise<AdminSourceImage[]>;
+  /**
+   * Queue (or re-queue) a background-removed copy of a source image for the
+   * worker. `not_found` when there is no such image; a string when its
+   * licence does not allow edited copies.
+   */
+  requestCutout(
+    sourceImageId: string,
+  ): Promise<AdminSourceImage | 'not_found' | { refused: string }>;
   listPosters(filter: { ownerId?: string; status?: string; limit: number }): Promise<AdminPoster[]>;
   coverage(filter: {
     ownerId?: string;
@@ -563,23 +591,35 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
     );
   }
 
-  async listSourceImages(f: { ownerId?: string; limit: number }): Promise<AdminSourceImage[]> {
+  async listSourceImages(f: {
+    id?: string;
+    ownerId?: string;
+    limit: number;
+  }): Promise<AdminSourceImage[]> {
     const rows = (await this.sql`
       select s.id, s.owner_id, u.email as owner_email, s.aircraft_id,
              ac.registration as aircraft_registration, ac.icao_type_code as aircraft_type,
              s.source_provider, s.source_page_url, s.original_file_url, s.storage_path, s.creator,
              s.license_name, s.license_url, s.attribution_text, s.view_angle_score,
              s.identity_confidence, s.created_at, s.raw_metadata->>'thumbnail_url' as link_thumb,
-             (select count(*)::int from public.art_assets a where a.source_image_id = s.id) as art_count
+             (select count(*)::int from public.art_assets a where a.source_image_id = s.id) as art_count,
+             c.status as cutout_status, c.storage_path as cutout_path, c.error as cutout_error,
+             c.attempts as cutout_attempts, c.requested_at as cutout_requested_at,
+             c.processed_at as cutout_processed_at
         from public.source_images s
         left join auth.users u on u.id = s.owner_id
         left join public.aircraft ac on ac.id = s.aircraft_id
-       where (${f.ownerId ?? null}::uuid is null or s.owner_id = ${f.ownerId ?? null}::uuid)
+        left join public.image_cutouts c on c.source_image_id = s.id
+       where (${f.id ?? null}::uuid is null or s.id = ${f.id ?? null}::uuid)
+         and (${f.ownerId ?? null}::uuid is null or s.owner_id = ${f.ownerId ?? null}::uuid)
        order by s.created_at desc, s.id desc
        limit ${f.limit}`) as Row[];
     const urls = await this.sign(
       BUCKETS.sourceImages,
-      rows.map((r) => strOrNull(r.storage_path)),
+      rows.flatMap((r) => [
+        strOrNull(r.storage_path),
+        r.cutout_status === 'done' ? strOrNull(r.cutout_path) : null,
+      ]),
     );
     return rows.map((r) => ({
       id: String(r.id),
@@ -604,7 +644,38 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       image_url: r.storage_path
         ? (urls.get(String(r.storage_path)) ?? null)
         : strOrNull(r.link_thumb),
+      cutout: r.cutout_status
+        ? {
+            status: r.cutout_status as CutoutStatus,
+            image_url:
+              r.cutout_status === 'done' && r.cutout_path
+                ? (urls.get(String(r.cutout_path)) ?? null)
+                : null,
+            error: strOrNull(r.cutout_error),
+            attempts: Number(r.cutout_attempts),
+            requested_at: iso(r.cutout_requested_at)!,
+            processed_at: iso(r.cutout_processed_at),
+          }
+        : null,
+      cutout_refusal: cutoutRefusal({
+        source_provider: String(r.source_provider),
+        license_name: strOrNull(r.license_name),
+        storage_path: strOrNull(r.storage_path),
+      }),
     }));
+  }
+
+  async requestCutout(sourceImageId: string) {
+    const [image] = await this.listSourceImages({ id: sourceImageId, limit: 1 });
+    if (!image) return 'not_found' as const;
+    if (image.cutout_refusal) return { refused: image.cutout_refusal };
+    await this.sql`
+      insert into public.image_cutouts (owner_id, source_image_id)
+      values (${image.owner_id}, ${image.id})
+      on conflict on constraint image_cutouts_source_image_key do update
+        set status = 'pending', attempts = 0, error = null, requested_at = now()`;
+    const [queued] = await this.listSourceImages({ id: sourceImageId, limit: 1 });
+    return queued!;
   }
 
   async listPosters(f: {
@@ -963,10 +1034,20 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
   }
 
   async deletePhotoPick(id: string): Promise<boolean> {
+    const [cutout] = (await this.sql`
+      select storage_path from public.image_cutouts
+       where source_image_id = ${id} and storage_path is not null`) as Row[];
     const rows = (await this.sql`
       delete from public.source_images
        where id = ${id} and raw_metadata->>'kind' = 'photo_pick'
       returning id`) as Row[];
+    if (rows.length === 1 && cutout) {
+      // Its cutout row went with it; remove the stored file too.
+      await this.storage.storage
+        .from(BUCKETS.sourceImages)
+        .remove([String(cutout.storage_path)])
+        .catch(() => undefined);
+    }
     return rows.length === 1;
   }
 
