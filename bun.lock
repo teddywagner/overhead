@@ -40,6 +40,7 @@
         "@overhead/database": "workspace:*",
         "@overhead/device-protocol": "workspace:*",
         "@overhead/display": "workspace:*",
+        "@overhead/flight-tracking": "workspace:*",
         "@supabase/supabase-js": "2.117.0",
         "hono": "4.13.8",
         "zod": "4.6.5",

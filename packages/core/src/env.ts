@@ -56,6 +56,14 @@ export const supabaseEnvSchema = z.object({
   SUPABASE_SECRET_KEY: required('SUPABASE_SECRET_KEY'),
 });
 
+/** Identifies us to third-party aircraft data services; must include contact details. */
+const userAgentShape = {
+  /** Sent to the ADS-B provider (worker) and to Planespotters for photos (API). */
+  AIRCRAFT_PROVIDER_USER_AGENT: z.string().trim().default(''),
+  /** Legacy name for AIRCRAFT_PROVIDER_USER_AGENT; still honoured. */
+  AIRPLANES_LIVE_USER_AGENT: z.string().trim().default(''),
+};
+
 export const apiEnvSchema = baseEnvSchema
   .extend(supabaseEnvSchema.shape)
   .extend(databaseEnvSchema.shape)
@@ -70,6 +78,9 @@ export const apiEnvSchema = baseEnvSchema
       .positive()
       .default(64 * 1024),
     DEVICE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
+    /** Admin board aircraft photos; off when no User-Agent is configured. */
+    PLANESPOTTERS_BASE_URL: z.url().default('https://api.planespotters.net'),
+    ...userAgentShape,
   });
 
 export const workerEnvSchema = baseEnvSchema
@@ -78,10 +89,7 @@ export const workerEnvSchema = baseEnvSchema
     AIRCRAFT_PROVIDER: z.enum(['adsb_lol', 'airplanes_live', 'mock']).default('adsb_lol'),
     ADSB_LOL_BASE_URL: z.url().default('https://api.adsb.lol'),
     AIRPLANES_LIVE_BASE_URL: z.url().default('https://api.airplanes.live'),
-    /** Sent to whichever ADS-B provider is active. */
-    AIRCRAFT_PROVIDER_USER_AGENT: z.string().trim().default(''),
-    /** Legacy name for AIRCRAFT_PROVIDER_USER_AGENT; still honoured. */
-    AIRPLANES_LIVE_USER_AGENT: z.string().trim().default(''),
+    ...userAgentShape,
     /** Aircraft/route details lookup. Disabled automatically with the mock provider. */
     ENRICHMENT_PROVIDER: z.enum(['adsbdb', 'none']).default('adsbdb'),
     ADSBDB_BASE_URL: z.url().default('https://api.adsbdb.com'),

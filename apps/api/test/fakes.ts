@@ -8,6 +8,8 @@ import type {
   ArtFields,
   ArtFilter,
   CoverageRow,
+  SeenAircraftFilter,
+  SeenAircraftReport,
   SignedUpload,
 } from '../src/admin-assets-repo';
 import type {
@@ -218,6 +220,8 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   sourceImages: AdminSourceImage[] = [];
   posters: AdminPoster[] = [];
   coverageRows: CoverageRow[] = [];
+  seen: SeenAircraftReport = { passes: 0, airframes: 0, by_type: [], by_operator: [], items: [] };
+  seenFilters: SeenAircraftFilter[] = [];
 
   async listArt(f: ArtFilter) {
     return this.art
@@ -310,6 +314,10 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   async coverage() {
     return this.coverageRows;
   }
+  async seenAircraft(f: SeenAircraftFilter) {
+    this.seenFilters.push(f);
+    return this.seen;
+  }
   async ownerExists(ownerId: string) {
     return this.owners.has(ownerId);
   }
@@ -353,6 +361,7 @@ export function makeDeps(overrides: Partial<AppDeps> = {}): AppDeps & {
       }),
     checkDatabase: async () => true,
     rateLimiter: new MemoryRateLimiter(),
+    aircraftPhotos: null,
     ...overrides,
     trusted,
     admin,

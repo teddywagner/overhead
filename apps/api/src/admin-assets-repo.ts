@@ -111,6 +111,60 @@ export interface CoverageRow {
   pending_count: number;
 }
 
+/** One airframe seen overhead, across the filtered passes. */
+export interface SeenAircraft {
+  icao24: string;
+  aircraft_id: string | null;
+  registration: string | null;
+  icao_type_code: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  operator_icao: string | null;
+  operator_name: string | null;
+  country: string | null;
+  passes: number;
+  /** Users whose locations it passed over. */
+  users: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  closest_distance_m: number;
+}
+
+export interface SeenTypeCount {
+  icao_type_code: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  passes: number;
+  airframes: number;
+}
+
+export interface SeenOperatorCount {
+  operator_icao: string | null;
+  operator_name: string | null;
+  passes: number;
+  airframes: number;
+}
+
+export interface SeenAircraftReport {
+  passes: number;
+  airframes: number;
+  by_type: SeenTypeCount[];
+  by_operator: SeenOperatorCount[];
+  /** Most-seen first; capped by the request's limit. */
+  items: SeenAircraft[];
+}
+
+export interface SeenAircraftFilter {
+  ownerId?: string;
+  days: number;
+  includeNearMisses: boolean;
+  typeCode?: string;
+  operatorIcao?: string;
+  /** Restrict to these manufacturers (case-insensitive). */
+  manufacturers?: string[];
+  limit: number;
+}
+
 export interface ArtFilter {
   id?: string;
   ownerId?: string;
@@ -166,6 +220,8 @@ export interface AdminAssetsRepository {
     days: number;
     includeNearMisses: boolean;
   }): Promise<CoverageRow[]>;
+  /** Airframes seen overhead, with pass counts by type and by operator. */
+  seenAircraft(filter: SeenAircraftFilter): Promise<SeenAircraftReport>;
   ownerExists(ownerId: string): Promise<boolean>;
 }
 
@@ -564,6 +620,89 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       airframes_with_exact_art: exact,
       pending_count: pending,
     }));
+  }
+
+  async seenAircraft(f: SeenAircraftFilter): Promise<SeenAircraftReport> {
+    // Manufacturer prefixes ("airbus" also matches "Airbus Canada"), comma-joined.
+    const makers = f.manufacturers?.length
+      ? f.manufacturers.map((m) => m.trim().toLowerCase()).join(',')
+      : null;
+    const [r] = (await this.sql`
+      with seen as (
+        select o.owner_id, o.icao24, o.first_seen_at, o.closest_seen_at, o.minimum_distance_m,
+               a.id as aircraft_id, coalesce(a.registration, o.registration) as registration,
+               a.icao_type_code, a.manufacturer, a.model, a.operator_icao, a.operator_name,
+               a.country
+          from public.overflights o
+          left join public.aircraft a on a.id = o.aircraft_id
+         where o.closest_seen_at > now() - make_interval(days => ${f.days})
+           and (o.status = 'qualified' or ${f.includeNearMisses})
+           and (${f.ownerId ?? null}::uuid is null or o.owner_id = ${f.ownerId ?? null}::uuid)
+           and (${f.typeCode ?? null}::text is null or a.icao_type_code = ${f.typeCode ?? null})
+           and (${f.operatorIcao ?? null}::text is null or a.operator_icao = ${f.operatorIcao ?? null})
+           and (${makers}::text is null or exists (
+                 select 1 from unnest(string_to_array(${makers}::text, ',')) m
+                  where lower(a.manufacturer) like m || '%'))
+      )
+      select
+        (select count(*)::int from seen) as passes,
+        (select count(distinct icao24)::int from seen) as airframes,
+        (select coalesce(jsonb_agg(t order by t.passes desc, t.icao_type_code), '[]'::jsonb)
+           from (select icao_type_code, max(manufacturer) as manufacturer, max(model) as model,
+                        count(*)::int as passes, count(distinct icao24)::int as airframes
+                   from seen group by icao_type_code
+                  order by passes desc limit 50) t) as by_type,
+        (select coalesce(jsonb_agg(t order by t.passes desc, t.operator_icao), '[]'::jsonb)
+           from (select operator_icao, max(operator_name) as operator_name,
+                        count(*)::int as passes, count(distinct icao24)::int as airframes
+                   from seen group by operator_icao
+                  order by passes desc limit 50) t) as by_operator,
+        (select coalesce(jsonb_agg(t order by t.passes desc, t.last_seen_at desc), '[]'::jsonb)
+           from (select icao24, max(aircraft_id::text) as aircraft_id,
+                        max(registration) as registration, max(icao_type_code) as icao_type_code,
+                        max(manufacturer) as manufacturer, max(model) as model,
+                        max(operator_icao) as operator_icao, max(operator_name) as operator_name,
+                        max(country) as country, count(*)::int as passes,
+                        count(distinct owner_id)::int as users,
+                        min(first_seen_at) as first_seen_at, max(closest_seen_at) as last_seen_at,
+                        min(minimum_distance_m) as closest_distance_m
+                   from seen group by icao24
+                  order by passes desc, last_seen_at desc limit ${f.limit}) t) as items`) as Row[];
+
+    const items = (r!.items as Row[]).map((i) => ({
+      icao24: String(i.icao24),
+      aircraft_id: strOrNull(i.aircraft_id),
+      registration: strOrNull(i.registration),
+      icao_type_code: strOrNull(i.icao_type_code),
+      manufacturer: strOrNull(i.manufacturer),
+      model: strOrNull(i.model),
+      operator_icao: strOrNull(i.operator_icao),
+      operator_name: strOrNull(i.operator_name),
+      country: strOrNull(i.country),
+      passes: Number(i.passes),
+      users: Number(i.users),
+      first_seen_at: iso(i.first_seen_at)!,
+      last_seen_at: iso(i.last_seen_at)!,
+      closest_distance_m: Number(i.closest_distance_m),
+    }));
+    return {
+      passes: Number(r!.passes),
+      airframes: Number(r!.airframes),
+      by_type: (r!.by_type as Row[]).map((t) => ({
+        icao_type_code: strOrNull(t.icao_type_code),
+        manufacturer: strOrNull(t.manufacturer),
+        model: strOrNull(t.model),
+        passes: Number(t.passes),
+        airframes: Number(t.airframes),
+      })),
+      by_operator: (r!.by_operator as Row[]).map((o) => ({
+        operator_icao: strOrNull(o.operator_icao),
+        operator_name: strOrNull(o.operator_name),
+        passes: Number(o.passes),
+        airframes: Number(o.airframes),
+      })),
+      items,
+    };
   }
 
   async ownerExists(ownerId: string): Promise<boolean> {

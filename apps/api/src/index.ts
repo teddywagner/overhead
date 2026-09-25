@@ -6,6 +6,7 @@ import {
   createLogger,
   loadEnv,
   withPlatformPort,
+  providerUserAgent,
   type ApiEnv,
 } from '@overhead/core';
 import {
@@ -15,10 +16,12 @@ import {
   createUserClient,
   pingDatabase,
 } from '@overhead/database';
+import { PlanespottersClient } from '@overhead/flight-tracking';
 import { SqlAdminAssetsRepository } from './admin-assets-repo';
 import { SqlAdminRepository } from './admin-repo';
 import { createApp } from './app';
 import type { AppDeps, VerifiedUser } from './deps';
+import { CachedAircraftPhotos } from './lib/aircraft-photos';
 import { MemoryRateLimiter } from './lib/rate-limit';
 import { SqlTrustedRepository } from './trusted-repo';
 
@@ -40,6 +43,13 @@ export function buildDeps(env: ApiEnv): AppDeps & { close(): Promise<void> } {
     return { userId: sub };
   };
 
+  const userAgent = providerUserAgent(env);
+  const aircraftPhotos = userAgent
+    ? new CachedAircraftPhotos(
+        new PlanespottersClient({ baseUrl: env.PLANESPOTTERS_BASE_URL, userAgent }),
+      )
+    : null;
+
   return {
     env,
     logger,
@@ -48,6 +58,7 @@ export function buildDeps(env: ApiEnv): AppDeps & { close(): Promise<void> } {
     trusted: new SqlTrustedRepository(sql, admin),
     admin: new SqlAdminRepository(sql),
     adminAssets: new SqlAdminAssetsRepository(sql, admin),
+    aircraftPhotos,
     checkDatabase: () => pingDatabase(sql),
     rateLimiter: new MemoryRateLimiter(),
     close: () => sql.close(),

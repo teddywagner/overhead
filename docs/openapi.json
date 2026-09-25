@@ -2655,6 +2655,162 @@
         ],
         "description": "Recorded passes grouped by operator + aircraft type, with the best artwork available."
       },
+      "SeenAircraftReport": {
+        "type": "object",
+        "properties": {
+          "passes": {
+            "type": "integer"
+          },
+          "airframes": {
+            "type": "integer"
+          },
+          "by_type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "icao_type_code": {
+                  "type": ["string", "null"]
+                },
+                "manufacturer": {
+                  "type": ["string", "null"]
+                },
+                "model": {
+                  "type": ["string", "null"]
+                },
+                "passes": {
+                  "type": "integer"
+                },
+                "airframes": {
+                  "type": "integer"
+                }
+              },
+              "required": ["icao_type_code", "manufacturer", "model", "passes", "airframes"]
+            }
+          },
+          "by_operator": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "operator_icao": {
+                  "type": ["string", "null"]
+                },
+                "operator_name": {
+                  "type": ["string", "null"]
+                },
+                "passes": {
+                  "type": "integer"
+                },
+                "airframes": {
+                  "type": "integer"
+                }
+              },
+              "required": ["operator_icao", "operator_name", "passes", "airframes"]
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeenAircraft"
+            }
+          }
+        },
+        "required": ["passes", "airframes", "by_type", "by_operator", "items"],
+        "description": "Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes."
+      },
+      "SeenAircraft": {
+        "type": "object",
+        "properties": {
+          "icao24": {
+            "type": "string"
+          },
+          "aircraft_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "registration": {
+            "type": ["string", "null"]
+          },
+          "icao_type_code": {
+            "type": ["string", "null"]
+          },
+          "manufacturer": {
+            "type": ["string", "null"]
+          },
+          "model": {
+            "type": ["string", "null"]
+          },
+          "operator_icao": {
+            "type": ["string", "null"]
+          },
+          "operator_name": {
+            "type": ["string", "null"]
+          },
+          "country": {
+            "type": ["string", "null"]
+          },
+          "passes": {
+            "type": "integer"
+          },
+          "users": {
+            "type": "integer"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closest_distance_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "icao24",
+          "aircraft_id",
+          "registration",
+          "icao_type_code",
+          "manufacturer",
+          "model",
+          "operator_icao",
+          "operator_name",
+          "country",
+          "passes",
+          "users",
+          "first_seen_at",
+          "last_seen_at",
+          "closest_distance_m"
+        ],
+        "description": "One airframe seen overhead in the period."
+      },
+      "AircraftPhoto": {
+        "type": "object",
+        "properties": {
+          "photo": {
+            "type": ["object", "null"],
+            "properties": {
+              "thumbnail_url": {
+                "type": "string"
+              },
+              "large_url": {
+                "type": "string"
+              },
+              "page_url": {
+                "type": "string"
+              },
+              "photographer": {
+                "type": "string"
+              }
+            },
+            "required": ["thumbnail_url", "large_url", "page_url", "photographer"]
+          }
+        },
+        "required": ["photo"],
+        "description": "A Planespotters.net photo of the airframe, or null when there is none. Show the photographer and link to page_url; hotlink the image, never store it."
+      },
       "AdminSourceImage": {
         "type": "object",
         "properties": {
@@ -9555,6 +9711,267 @@
                         }
                       },
                       "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/seen-aircraft": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "Planes seen overhead",
+        "description": "Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "owner_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 30
+            },
+            "required": false,
+            "name": "days",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "required": false,
+            "name": "include_near_misses",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9]{2,4}$"
+            },
+            "required": false,
+            "name": "type_code",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "required": false,
+            "name": "operator",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z .-]{0,39}(,[A-Za-z][A-Za-z .-]{0,39}){0,9}$"
+            },
+            "required": false,
+            "name": "manufacturer",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SeenAircraftReport"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/aircraft-photos/{icao24}": {
+      "get": {
+        "tags": ["Admin: assets"],
+        "summary": "Photo of an airframe",
+        "description": "Looked up on Planespotters.net by Mode S address, then registration, and cached. Fails with not_ready when AIRCRAFT_PROVIDER_USER_AGENT is not set or Planespotters cannot be reached.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^~?[0-9a-fA-F]{6}$"
+            },
+            "required": true,
+            "name": "icao24",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9-]{1,12}$"
+            },
+            "required": false,
+            "name": "registration",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AircraftPhoto"
                     },
                     "error": {
                       "type": "null"
