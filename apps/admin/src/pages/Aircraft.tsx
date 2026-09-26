@@ -533,7 +533,7 @@ export function Aircraft() {
         r && {
           ...r,
           items: r.items.map((i) => (sameSlot(slot, i) ? { ...i, collection_best: best } : i)),
-          collection: r.collection.map((s) => (sameSlot(slot, s) ? { ...s, best } : s)),
+          collection: (r.collection ?? []).map((s) => (sameSlot(slot, s) ? { ...s, best } : s)),
         },
     );
 
@@ -680,7 +680,7 @@ export function Aircraft() {
           </div>
 
           <Collection
-            slots={report.collection}
+            slots={report.collection ?? []}
             onPick={(s) => {
               setTypeCode(s.icao_type_code);
               if (s.operator_icao) setOperator(s.operator_icao);
@@ -720,7 +720,7 @@ export function Aircraft() {
                   <div className="muted small">
                     closest {fmtNum(p.closest_distance_m, ' m')} · {p.icao24}
                   </div>
-                  {p.recent_routes.map((r) => (
+                  {(p.recent_routes ?? []).map((r) => (
                     <div
                       key={`${r.origin_code}-${r.destination_code}`}
                       className="small route"
