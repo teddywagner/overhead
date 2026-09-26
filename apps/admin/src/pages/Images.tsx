@@ -1,9 +1,79 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, unwrap, type Schemas } from '../api';
 import { fmtAgo } from '../format';
+import { PROVIDER_LABEL } from '../planespotters';
 import { useUsers } from '../useUsers';
 
 type Image = Schemas['AdminSourceImage'];
+
+const CUTOUT_LABEL: Record<string, string> = {
+  pending: 'queued',
+  processing: 'removing background…',
+  failed: 'failed',
+};
+
+/** Photo, or its background-removed cutout, with the controls to make one. */
+function Thumb({ image, onChange }: { image: Image; onChange: (i: Image) => void }) {
+  const [showCutout, setShowCutout] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const cutout = image.cutout;
+  const done = cutout?.status === 'done' && cutout.image_url;
+  const working = cutout?.status === 'pending' || cutout?.status === 'processing';
+
+  const request = () => {
+    setBusy(true);
+    setError('');
+    unwrap(api.POST('/admin/v1/source-images/{id}/cutout', { params: { path: { id: image.id } } }))
+      .then(onChange)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <>
+      <div className="art-thumb">
+        {done && showCutout ? (
+          <img src={cutout.image_url!} alt="" loading="lazy" />
+        ) : image.image_url ? (
+          <img src={image.image_url} alt="" loading="lazy" />
+        ) : (
+          <span>not uploaded</span>
+        )}
+        {done && <span className="badge ok saved-badge">✂ cutout</span>}
+      </div>
+      <div className="photo-actions cutout-actions">
+        {done && (
+          <button className="ghost small" onClick={() => setShowCutout(!showCutout)}>
+            {showCutout ? 'Show original' : 'Show cutout'}
+          </button>
+        )}
+        {image.cutout_refusal ? (
+          <span className="muted small" title={image.cutout_refusal}>
+            No cutout: {image.cutout_refusal}
+          </span>
+        ) : working ? (
+          <span className="badge">{CUTOUT_LABEL[cutout!.status]}</span>
+        ) : (
+          <button className="ghost small" disabled={busy} onClick={request}>
+            {done
+              ? 'Redo cutout'
+              : cutout?.status === 'failed'
+                ? 'Try again'
+                : '✂ Remove background'}
+          </button>
+        )}
+      </div>
+      {cutout?.status === 'failed' && (
+        <div className="notice error small">
+          {cutout.error ?? 'Background removal failed'}
+          {cutout.attempts > 1 ? ` (after ${cutout.attempts} tries)` : ''}
+        </div>
+      )}
+      {error && <div className="notice error small">{error}</div>}
+    </>
+  );
+}
 
 export function Images() {
   const users = useUsers();
@@ -11,22 +81,40 @@ export function Images() {
   const [items, setItems] = useState<Image[] | null>(null);
   const [error, setError] = useState('');
 
+  const load = useCallback(
+    () =>
+      unwrap(
+        api.GET('/admin/v1/source-images', {
+          params: { query: { limit: 200, ...(owner ? { owner_id: owner } : {}) } },
+        }),
+      )
+        .then((d) => setItems(d.items))
+        .catch((e: Error) => setError(e.message)),
+    [owner],
+  );
   useEffect(() => {
-    unwrap(
-      api.GET('/admin/v1/source-images', {
-        params: { query: { limit: 200, ...(owner ? { owner_id: owner } : {}) } },
-      }),
-    )
-      .then((d) => setItems(d.items))
-      .catch((e: Error) => setError(e.message));
-  }, [owner]);
+    load();
+  }, [load]);
+
+  // While the worker has cutouts to make, check back every few seconds.
+  const working = (items ?? []).some(
+    (i) => i.cutout?.status === 'pending' || i.cutout?.status === 'processing',
+  );
+  useEffect(() => {
+    if (!working) return;
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, [working, load]);
 
   return (
     <section>
       <h1>Reference images</h1>
       <p className="muted">
-        Photos used as references for artwork, with their licence and attribution. Nothing is
-        fetched from the source URLs; only uploaded files are shown.
+        Photos used as references for artwork, with their licence and attribution. Picked photos are
+        links to their source. <strong>Remove background</strong> has the worker cut the aircraft
+        out into a transparent PNG kept with the owner’s images; it is only offered where the
+        licence allows edited copies (your own uploads and Wikimedia Commons photos), not for
+        Planespotters.net or airport-data.com photos.
       </p>
       <div className="filters">
         <select value={owner} onChange={(e) => setOwner(e.target.value)}>
@@ -49,13 +137,12 @@ export function Images() {
             const missingLicence = !i.license_name;
             return (
               <div key={i.id} className="art-card static">
-                <div className="art-thumb">
-                  {i.image_url ? (
-                    <img src={i.image_url} alt="" loading="lazy" />
-                  ) : (
-                    <span>not uploaded</span>
-                  )}
-                </div>
+                <Thumb
+                  image={i}
+                  onChange={(next) =>
+                    setItems((all) => all && all.map((x) => (x.id === next.id ? next : x)))
+                  }
+                />
                 <div className="art-meta">
                   <div className="row spread">
                     <span className="strong">
@@ -77,7 +164,7 @@ export function Images() {
                   </div>
                   {i.attribution_text && <div className="muted small">{i.attribution_text}</div>}
                   <div className="muted small">
-                    {i.source_provider}
+                    {PROVIDER_LABEL[i.source_provider] ?? i.source_provider}
                     {i.source_page_url && (
                       <>
                         {' · '}

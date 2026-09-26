@@ -405,6 +405,12 @@
           "destination_code": {
             "type": ["string", "null"]
           },
+          "origin_name": {
+            "type": ["string", "null"]
+          },
+          "destination_name": {
+            "type": ["string", "null"]
+          },
           "first_seen_at": {
             "type": "string",
             "format": "date-time"
@@ -466,6 +472,14 @@
               }
             },
             "required": ["icao_type_code", "operator_icao", "manufacturer", "model"]
+          },
+          "closest_latitude": {
+            "type": ["number", "null"],
+            "description": "Only with include_position=true (private)."
+          },
+          "closest_longitude": {
+            "type": ["number", "null"],
+            "description": "Only with include_position=true (private)."
           }
         },
         "required": [
@@ -479,6 +493,8 @@
           "flight_number",
           "origin_code",
           "destination_code",
+          "origin_name",
+          "destination_name",
           "first_seen_at",
           "closest_seen_at",
           "last_seen_at",
@@ -506,12 +522,6 @@
               "raw_summary": {
                 "type": "object",
                 "additionalProperties": {}
-              },
-              "closest_latitude": {
-                "type": ["number", "null"]
-              },
-              "closest_longitude": {
-                "type": ["number", "null"]
               }
             },
             "required": ["provider_pass_key", "raw_summary"]
@@ -2714,10 +2724,103 @@
             "items": {
               "$ref": "#/components/schemas/SeenAircraft"
             }
+          },
+          "collection": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "operator_icao": {
+                  "type": ["string", "null"]
+                },
+                "icao_type_code": {
+                  "type": "string"
+                },
+                "operator_name": {
+                  "type": ["string", "null"]
+                },
+                "manufacturer": {
+                  "type": ["string", "null"]
+                },
+                "model": {
+                  "type": ["string", "null"]
+                },
+                "passes": {
+                  "type": "integer"
+                },
+                "airframes": {
+                  "type": "integer"
+                },
+                "best": {
+                  "type": ["object", "null"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "thumbnail_url": {
+                      "type": "string"
+                    },
+                    "image_url": {
+                      "type": "string"
+                    },
+                    "page_url": {
+                      "type": ["string", "null"]
+                    },
+                    "creator": {
+                      "type": ["string", "null"]
+                    },
+                    "license_name": {
+                      "type": ["string", "null"]
+                    },
+                    "license_url": {
+                      "type": ["string", "null"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "icao24": {
+                      "type": ["string", "null"]
+                    },
+                    "registration": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "provider",
+                    "thumbnail_url",
+                    "image_url",
+                    "page_url",
+                    "creator",
+                    "license_name",
+                    "license_url",
+                    "created_at",
+                    "icao24",
+                    "registration"
+                  ],
+                  "description": "The best saved photo for an operator + aircraft type slot, and its airframe."
+                }
+              },
+              "required": [
+                "operator_icao",
+                "icao_type_code",
+                "operator_name",
+                "manufacturer",
+                "model",
+                "passes",
+                "airframes",
+                "best"
+              ]
+            }
           }
         },
-        "required": ["passes", "airframes", "by_type", "by_operator", "items"],
-        "description": "Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes."
+        "required": ["passes", "airframes", "by_type", "by_operator", "items", "collection"],
+        "description": "Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes. `collection` lists every operator + type slot seen (known types only, top 300) with your best photo for it."
       },
       "SeenAircraft": {
         "type": "object",
@@ -2769,6 +2872,100 @@
           },
           "saved_photo": {
             "$ref": "#/components/schemas/SavedPhoto"
+          },
+          "recent_routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "origin_code": {
+                  "type": ["string", "null"]
+                },
+                "destination_code": {
+                  "type": ["string", "null"]
+                },
+                "origin_name": {
+                  "type": ["string", "null"]
+                },
+                "destination_name": {
+                  "type": ["string", "null"]
+                },
+                "flight_number": {
+                  "type": ["string", "null"]
+                },
+                "passes": {
+                  "type": "integer"
+                },
+                "last_seen_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "origin_code",
+                "destination_code",
+                "origin_name",
+                "destination_name",
+                "flight_number",
+                "passes",
+                "last_seen_at"
+              ]
+            },
+            "description": "Up to 3 distinct routes it flew overhead, latest first."
+          },
+          "collection_best": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "thumbnail_url": {
+                "type": "string"
+              },
+              "image_url": {
+                "type": "string"
+              },
+              "page_url": {
+                "type": ["string", "null"]
+              },
+              "creator": {
+                "type": ["string", "null"]
+              },
+              "license_name": {
+                "type": ["string", "null"]
+              },
+              "license_url": {
+                "type": ["string", "null"]
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "icao24": {
+                "type": ["string", "null"]
+              },
+              "registration": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": [
+              "id",
+              "provider",
+              "thumbnail_url",
+              "image_url",
+              "page_url",
+              "creator",
+              "license_name",
+              "license_url",
+              "created_at",
+              "icao24",
+              "registration"
+            ],
+            "description": "Your best photo for this airframe's operator + type slot (null when the slot is empty or the type is unknown). It may be of another airframe."
           }
         },
         "required": [
@@ -2786,7 +2983,9 @@
           "first_seen_at",
           "last_seen_at",
           "closest_distance_m",
-          "saved_photo"
+          "saved_photo",
+          "recent_routes",
+          "collection_best"
         ],
         "description": "One airframe seen overhead in the period."
       },
@@ -2892,6 +3091,97 @@
         ],
         "description": "A photo on offer for an airframe."
       },
+      "PhotoPickResult": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SavedPhoto"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "collection": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["added", "already_best", "kept_existing", "no_type"],
+                    "description": "`added`: the operator + type slot was empty and this photo now fills it. `already_best`: it was already the slot's best. `kept_existing`: the slot already has a different best photo (compare them and choose with PUT /photo-collection). `no_type`: the aircraft type is unknown, so there is no slot."
+                  },
+                  "slot": {
+                    "type": ["object", "null"],
+                    "properties": {
+                      "operator_icao": {
+                        "type": ["string", "null"]
+                      },
+                      "icao_type_code": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["operator_icao", "icao_type_code"]
+                  },
+                  "best": {
+                    "type": ["object", "null"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "provider": {
+                        "type": "string"
+                      },
+                      "thumbnail_url": {
+                        "type": "string"
+                      },
+                      "image_url": {
+                        "type": "string"
+                      },
+                      "page_url": {
+                        "type": ["string", "null"]
+                      },
+                      "creator": {
+                        "type": ["string", "null"]
+                      },
+                      "license_name": {
+                        "type": ["string", "null"]
+                      },
+                      "license_url": {
+                        "type": ["string", "null"]
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "icao24": {
+                        "type": ["string", "null"]
+                      },
+                      "registration": {
+                        "type": ["string", "null"]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "provider",
+                      "thumbnail_url",
+                      "image_url",
+                      "page_url",
+                      "creator",
+                      "license_name",
+                      "license_url",
+                      "created_at",
+                      "icao24",
+                      "registration"
+                    ],
+                    "description": "The best saved photo for an operator + aircraft type slot, and its airframe."
+                  }
+                },
+                "required": ["status", "slot", "best"]
+              }
+            },
+            "required": ["collection"]
+          }
+        ],
+        "description": "A photo picked for an airframe. Links only; the image is never downloaded."
+      },
       "PhotoPick": {
         "type": "object",
         "properties": {
@@ -2908,6 +3198,84 @@
         "required": ["image_url"],
         "additionalProperties": false,
         "description": "Pick one of the photos listed by the candidates endpoint, by its image_url."
+      },
+      "PhotoCollectionEntry": {
+        "type": "object",
+        "properties": {
+          "operator_icao": {
+            "type": ["string", "null"]
+          },
+          "icao_type_code": {
+            "type": "string"
+          },
+          "best": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "thumbnail_url": {
+                "type": "string"
+              },
+              "image_url": {
+                "type": "string"
+              },
+              "page_url": {
+                "type": ["string", "null"]
+              },
+              "creator": {
+                "type": ["string", "null"]
+              },
+              "license_name": {
+                "type": ["string", "null"]
+              },
+              "license_url": {
+                "type": ["string", "null"]
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "icao24": {
+                "type": ["string", "null"]
+              },
+              "registration": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": [
+              "id",
+              "provider",
+              "thumbnail_url",
+              "image_url",
+              "page_url",
+              "creator",
+              "license_name",
+              "license_url",
+              "created_at",
+              "icao24",
+              "registration"
+            ],
+            "description": "The best saved photo for an operator + aircraft type slot, and its airframe."
+          }
+        },
+        "required": ["operator_icao", "icao_type_code", "best"]
+      },
+      "PhotoCollectionSet": {
+        "type": "object",
+        "properties": {
+          "source_image_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["source_image_id"],
+        "additionalProperties": false,
+        "description": "Make one of your saved photos the best for its operator + type slot."
       },
       "AircraftPhoto": {
         "type": "object",
@@ -2997,6 +3365,46 @@
           },
           "image_url": {
             "type": ["string", "null"]
+          },
+          "cutout": {
+            "type": ["object", "null"],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["pending", "processing", "done", "failed"]
+              },
+              "image_url": {
+                "type": ["string", "null"],
+                "description": "Signed link to the transparent PNG once done (valid 10 minutes)."
+              },
+              "error": {
+                "type": ["string", "null"]
+              },
+              "attempts": {
+                "type": "integer"
+              },
+              "requested_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "processed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "status",
+              "image_url",
+              "error",
+              "attempts",
+              "requested_at",
+              "processed_at"
+            ],
+            "description": "The background-removed copy, if one was requested."
+          },
+          "cutout_refusal": {
+            "type": ["string", "null"],
+            "description": "Why this photo may not be cut out (its licence), or null when it may."
           }
         },
         "required": [
@@ -3018,7 +3426,9 @@
           "identity_confidence",
           "created_at",
           "art_count",
-          "image_url"
+          "image_url",
+          "cutout",
+          "cutout_refusal"
         ]
       },
       "AdminPoster": {
@@ -4302,7 +4712,7 @@
       "get": {
         "tags": ["Overflights"],
         "summary": "List overflights",
-        "description": "Newest first by closest approach. Dates are local to the location. Closest-approach coordinates are omitted from lists.",
+        "description": "Newest first by closest approach. Dates are local to the location. Closest-approach coordinates are omitted unless include_position=true.",
         "security": [
           {
             "bearerAuth": []
@@ -4374,6 +4784,17 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "description": "Include closest-approach coordinates (private)."
+            },
+            "required": false,
+            "description": "Include closest-approach coordinates (private).",
+            "name": "include_position",
             "in": "query"
           },
           {
@@ -10174,7 +10595,7 @@
       "post": {
         "tags": ["Admin: assets"],
         "summary": "Save a photo for an airframe",
-        "description": "image_url must be one of the photos the candidates endpoint lists for this airframe. Saved as a source image (links only). The latest pick is shown on the Aircraft page.",
+        "description": "image_url must be one of the photos the candidates endpoint lists for this airframe. Saved as a source image (links only). The latest pick is shown on the Aircraft page. When your collection has no photo for the aircraft's operator + type yet, this one fills the slot; otherwise `collection` returns the current best to compare against.",
         "security": [
           {
             "bearerAuth": []
@@ -10210,7 +10631,103 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/SavedPhoto"
+                      "$ref": "#/components/schemas/PhotoPickResult"
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/photo-collection": {
+      "put": {
+        "tags": ["Admin: assets"],
+        "summary": "Choose the best photo for an operator + type",
+        "description": "Makes one of your saved photos the best for its aircraft's operator + type slot, replacing the slot's current best.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoCollectionSet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PhotoCollectionEntry"
                     },
                     "error": {
                       "type": "null"
@@ -10530,6 +11047,104 @@
                         }
                       },
                       "required": ["items"]
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "error", "request_id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/source-images/{id}/cutout": {
+      "post": {
+        "tags": ["Admin: assets"],
+        "summary": "Remove a photo’s background",
+        "description": "Queues a background-removed copy (a \"cutout\") for the worker, or re-queues it. The worker needs CUTOUT_PROVIDER set. Refused when the photo’s licence does not allow edited copies (see `cutout_refusal`): Planespotters.net and airport-data.com photos may only be linked to.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "22222222-2222-4222-8222-222222222222"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminSourceImage"
                     },
                     "error": {
                       "type": "null"

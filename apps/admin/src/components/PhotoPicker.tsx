@@ -4,7 +4,7 @@ import {
   photoCandidates,
   savePhoto,
   type PhotoCandidate,
-  type SavedPhoto,
+  type PhotoPickResult,
 } from '../planespotters';
 
 /** Every photo on offer for one airframe; pick one to save it. */
@@ -19,7 +19,7 @@ export function PhotoPicker({
   registration: string | null;
   current: string | null;
   onClose: () => void;
-  onSaved: (saved: SavedPhoto) => void;
+  onSaved: (saved: PhotoPickResult) => void;
 }) {
   const [items, setItems] = useState<PhotoCandidate[] | null>(null);
   const [failed, setFailed] = useState<string[]>([]);
@@ -74,7 +74,18 @@ export function PhotoPicker({
                   <a className="plane-photo" href={c.page_url} target="_blank" rel="noreferrer">
                     <img src={c.thumbnail_url} alt="" loading="lazy" />
                   </a>
-                  <div className="small">{PROVIDER_LABEL[c.provider] ?? c.provider}</div>
+                  <div className="small">
+                    {PROVIDER_LABEL[c.provider] ?? c.provider}
+                    {c.provider === 'wikimedia_commons' && (
+                      <span
+                        className="badge ok"
+                        title="Free licence: its background can be removed on the Images page"
+                      >
+                        {' '}
+                        ✂ cutout OK
+                      </span>
+                    )}
+                  </div>
                   <div className="muted small credit-line">
                     {[c.creator && `© ${c.creator}`, c.license_name].filter(Boolean).join(' · ') ||
                       'No credit given'}

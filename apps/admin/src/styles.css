@@ -557,6 +557,7 @@ a.button-like:hover {
   overflow: hidden;
 }
 .art-thumb {
+  position: relative;
   aspect-ratio: 4 / 3;
   color: var(--muted);
   font-size: 12px;
@@ -821,4 +822,281 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Location airspace (components/Airspace.tsx) */
+.airspace {
+  display: grid;
+  gap: 8px;
+}
+.airspace-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.airspace-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.airspace-canvas:active {
+  cursor: grabbing;
+}
+.as-ground {
+  fill: var(--panel);
+}
+.as-tiles {
+  opacity: 0.75;
+}
+.as-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.as-ring {
+  fill: none;
+  stroke-width: 1.5;
+}
+.as-ring.search {
+  stroke: var(--muted);
+  stroke-dasharray: 2 4;
+}
+.as-ring.near {
+  stroke: var(--warn);
+  stroke-dasharray: 6 4;
+}
+.as-ring.overhead {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.as-ring.ceiling {
+  stroke-dasharray: 4 3;
+}
+.as-cylinder {
+  fill: var(--accent);
+  fill-opacity: 0.12;
+  stroke: var(--accent);
+  stroke-opacity: 0.5;
+}
+.as-ruler line {
+  stroke: var(--muted);
+}
+.as-ruler text,
+.as-labels text {
+  font-size: 11px;
+  fill: var(--muted);
+}
+.as-labels .ring-label.overhead {
+  fill: var(--accent);
+}
+.as-labels .ring-label.near {
+  fill: var(--warn);
+}
+.as-labels .as-north {
+  font-weight: 700;
+  fill: var(--text);
+}
+.as-home {
+  fill: var(--text);
+}
+.as-credit {
+  font-size: 10px;
+  fill: var(--muted);
+}
+.as-pass {
+  cursor: pointer;
+}
+.as-pass .stem {
+  stroke: var(--muted);
+  stroke-dasharray: 2 2;
+}
+.as-pass .foot {
+  fill: var(--muted);
+}
+.as-pass circle:not(.foot) {
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+.as-pass.qualified circle:not(.foot) {
+  fill: var(--accent);
+}
+.as-pass.near circle:not(.foot) {
+  fill: var(--warn);
+}
+.as-pass.on circle:not(.foot) {
+  stroke: var(--text);
+  stroke-width: 2.5;
+}
+.as-track polyline {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2.5;
+}
+.as-track polyline.shadow {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-opacity: 0.6;
+  stroke-dasharray: 3 3;
+}
+.as-track circle {
+  fill: var(--ok);
+}
+.location-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .location-detail {
+    grid-template-columns: 1fr;
+  }
+}
+.legend {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.legend dt {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend dd {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.swatch {
+  display: inline-block;
+  width: 18px;
+  height: 0;
+  border-top: 2px solid;
+}
+.swatch.overhead {
+  border-color: var(--accent);
+}
+.swatch.near {
+  border-color: var(--warn);
+  border-top-style: dashed;
+}
+.swatch.search {
+  border-color: var(--muted);
+  border-top-style: dotted;
+}
+.swatch.dot {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+}
+.swatch.dot.overhead {
+  background: var(--accent);
+}
+.swatch.dot.near {
+  background: var(--warn);
+}
+tr.selectable {
+  cursor: pointer;
+}
+tr.selectable:hover td {
+  background: var(--accent-soft);
+}
+.route-cell {
+  min-width: 180px;
+}
+.field-hint {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+/* Photo collection (pages/Aircraft.tsx) */
+.collection-progress {
+  display: block;
+  height: 6px;
+  margin-bottom: 12px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.collection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px 20px;
+}
+.collection-group {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  font-size: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+.chip.done {
+  border: 1px solid var(--ok);
+  background: var(--ok-soft);
+}
+.chip img {
+  width: 36px;
+  height: 24px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.chip-empty {
+  padding-left: 6px;
+  color: var(--muted);
+}
+.compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .compare {
+    grid-template-columns: 1fr;
+  }
+}
+.compare-side {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.compare-photo {
+  display: block;
+  background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+}
+.compare-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.cutout-actions {
+  padding: 8px 12px 0;
+  flex-wrap: wrap;
+  align-items: center;
 }

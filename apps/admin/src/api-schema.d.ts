@@ -946,7 +946,7 @@ export interface paths {
         };
         /**
          * List overflights
-         * @description Newest first by closest approach. Dates are local to the location. Closest-approach coordinates are omitted from lists.
+         * @description Newest first by closest approach. Dates are local to the location. Closest-approach coordinates are omitted unless include_position=true.
          */
         get: {
             parameters: {
@@ -960,6 +960,8 @@ export interface paths {
                     type_code?: string;
                     operator?: string;
                     status?: "qualified" | "near_miss";
+                    /** @description Include closest-approach coordinates (private). */
+                    include_position?: "true" | "false";
                     limit?: number;
                     /** @description Opaque cursor from next_cursor */
                     cursor?: string;
@@ -5636,7 +5638,7 @@ export interface paths {
         put?: never;
         /**
          * Save a photo for an airframe
-         * @description image_url must be one of the photos the candidates endpoint lists for this airframe. Saved as a source image (links only). The latest pick is shown on the Aircraft page.
+         * @description image_url must be one of the photos the candidates endpoint lists for this airframe. Saved as a source image (links only). The latest pick is shown on the Aircraft page. When your collection has no photo for the aircraft's operator + type yet, this one fills the slot; otherwise `collection` returns the current best to compare against.
          */
         post: {
             parameters: {
@@ -5660,7 +5662,7 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            data: components["schemas"]["SavedPhoto"];
+                            data: components["schemas"]["PhotoPickResult"];
                             error: null;
                             request_id: string;
                         };
@@ -5713,6 +5715,98 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/photo-collection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose the best photo for an operator + type
+         * @description Makes one of your saved photos the best for its aircraft's operator + type slot, replacing the slot's current best.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PhotoCollectionSet"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["PhotoCollectionEntry"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5982,6 +6076,96 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/source-images/{id}/cutout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove a photo’s background
+         * @description Queues a background-removed copy (a "cutout") for the worker, or re-queues it. The worker needs CUTOUT_PROVIDER set. Refused when the photo’s licence does not allow edited copies (see `cutout_refusal`): Planespotters.net and airport-data.com photos may only be linked to.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["AdminSourceImage"];
+                            error: null;
+                            request_id: string;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing or invalid access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -6446,6 +6630,8 @@ export interface components {
             flight_number: string | null;
             origin_code: string | null;
             destination_code: string | null;
+            origin_name: string | null;
+            destination_name: string | null;
             /** Format: date-time */
             first_seen_at: string;
             /** Format: date-time */
@@ -6469,14 +6655,16 @@ export interface components {
                 manufacturer: string | null;
                 model: string | null;
             } | null;
+            /** @description Only with include_position=true (private). */
+            closest_latitude?: number | null;
+            /** @description Only with include_position=true (private). */
+            closest_longitude?: number | null;
         };
         OverflightDetail: components["schemas"]["Overflight"] & {
             provider_pass_key: string;
             raw_summary: {
                 [key: string]: unknown;
             };
-            closest_latitude?: number | null;
-            closest_longitude?: number | null;
         };
         OverflightPoint: {
             /** Format: date-time */
@@ -7126,7 +7314,7 @@ export interface components {
             airframes_with_exact_art: number;
             pending_count: number;
         };
-        /** @description Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes. */
+        /** @description Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes. `collection` lists every operator + type slot seen (known types only, top 300) with your best photo for it. */
         SeenAircraftReport: {
             passes: number;
             airframes: number;
@@ -7144,6 +7332,31 @@ export interface components {
                 airframes: number;
             }[];
             items: components["schemas"]["SeenAircraft"][];
+            collection: {
+                operator_icao: string | null;
+                icao_type_code: string;
+                operator_name: string | null;
+                manufacturer: string | null;
+                model: string | null;
+                passes: number;
+                airframes: number;
+                /** @description The best saved photo for an operator + aircraft type slot, and its airframe. */
+                best: {
+                    /** Format: uuid */
+                    id: string;
+                    provider: string;
+                    thumbnail_url: string;
+                    image_url: string;
+                    page_url: string | null;
+                    creator: string | null;
+                    license_name: string | null;
+                    license_url: string | null;
+                    /** Format: date-time */
+                    created_at: string;
+                    icao24: string | null;
+                    registration: string | null;
+                } | null;
+            }[];
         };
         /** @description One airframe seen overhead in the period. */
         SeenAircraft: {
@@ -7165,6 +7378,33 @@ export interface components {
             last_seen_at: string;
             closest_distance_m: number;
             saved_photo: components["schemas"]["SavedPhoto"];
+            /** @description Up to 3 distinct routes it flew overhead, latest first. */
+            recent_routes: {
+                origin_code: string | null;
+                destination_code: string | null;
+                origin_name: string | null;
+                destination_name: string | null;
+                flight_number: string | null;
+                passes: number;
+                /** Format: date-time */
+                last_seen_at: string;
+            }[];
+            /** @description Your best photo for this airframe's operator + type slot (null when the slot is empty or the type is unknown). It may be of another airframe. */
+            collection_best: {
+                /** Format: uuid */
+                id: string;
+                provider: string;
+                thumbnail_url: string;
+                image_url: string;
+                page_url: string | null;
+                creator: string | null;
+                license_name: string | null;
+                license_url: string | null;
+                /** Format: date-time */
+                created_at: string;
+                icao24: string | null;
+                registration: string | null;
+            } | null;
         };
         /** @description A photo picked for an airframe. Links only; the image is never downloaded. */
         SavedPhoto: {
@@ -7195,10 +7435,65 @@ export interface components {
             license_name: string | null;
             license_url: string | null;
         };
+        /** @description A photo picked for an airframe. Links only; the image is never downloaded. */
+        PhotoPickResult: components["schemas"]["SavedPhoto"] & {
+            collection: {
+                /**
+                 * @description `added`: the operator + type slot was empty and this photo now fills it. `already_best`: it was already the slot's best. `kept_existing`: the slot already has a different best photo (compare them and choose with PUT /photo-collection). `no_type`: the aircraft type is unknown, so there is no slot.
+                 * @enum {string}
+                 */
+                status: "added" | "already_best" | "kept_existing" | "no_type";
+                slot: {
+                    operator_icao: string | null;
+                    icao_type_code: string;
+                } | null;
+                /** @description The best saved photo for an operator + aircraft type slot, and its airframe. */
+                best: {
+                    /** Format: uuid */
+                    id: string;
+                    provider: string;
+                    thumbnail_url: string;
+                    image_url: string;
+                    page_url: string | null;
+                    creator: string | null;
+                    license_name: string | null;
+                    license_url: string | null;
+                    /** Format: date-time */
+                    created_at: string;
+                    icao24: string | null;
+                    registration: string | null;
+                } | null;
+            };
+        };
         /** @description Pick one of the photos listed by the candidates endpoint, by its image_url. */
         PhotoPick: {
             image_url: string;
             registration?: string;
+        };
+        PhotoCollectionEntry: {
+            operator_icao: string | null;
+            icao_type_code: string;
+            /** @description The best saved photo for an operator + aircraft type slot, and its airframe. */
+            best: {
+                /** Format: uuid */
+                id: string;
+                provider: string;
+                thumbnail_url: string;
+                image_url: string;
+                page_url: string | null;
+                creator: string | null;
+                license_name: string | null;
+                license_url: string | null;
+                /** Format: date-time */
+                created_at: string;
+                icao24: string | null;
+                registration: string | null;
+            };
+        };
+        /** @description Make one of your saved photos the best for its operator + type slot. */
+        PhotoCollectionSet: {
+            /** Format: uuid */
+            source_image_id: string;
         };
         /** @description A Planespotters.net photo of the airframe, or null when there is none. Show the photographer and link to page_url; hotlink the image, never store it. */
         AircraftPhoto: {
@@ -7233,6 +7528,21 @@ export interface components {
             created_at: string;
             art_count: number;
             image_url: string | null;
+            /** @description The background-removed copy, if one was requested. */
+            cutout: {
+                /** @enum {string} */
+                status: "pending" | "processing" | "done" | "failed";
+                /** @description Signed link to the transparent PNG once done (valid 10 minutes). */
+                image_url: string | null;
+                error: string | null;
+                attempts: number;
+                /** Format: date-time */
+                requested_at: string;
+                /** Format: date-time */
+                processed_at: string | null;
+            } | null;
+            /** @description Why this photo may not be cut out (its licence), or null when it may. */
+            cutout_refusal: string | null;
         };
         AdminPoster: {
             /** Format: uuid */

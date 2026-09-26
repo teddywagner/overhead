@@ -55,16 +55,17 @@ Then:
    domain, and keep it at **one replica**.
 2. **Variables** (each service → Variables → Raw editor):
 
-   | Variable                                                          | API | Worker |
-   | ----------------------------------------------------------------- | --- | ------ |
-   | `NODE_ENV=production`                                             | ✓   | ✓      |
-   | `DATABASE_URL` (session pooler, ending `?sslmode=require`)        | ✓   | ✓      |
-   | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` | ✓   |        |
-   | `TRUST_PROXY=true` (Railway sits behind a proxy)                  | ✓   |        |
-   | `CORS_ALLOWED_ORIGINS` (your web app's origin, when it exists)    | ✓   |        |
-   | `AIRCRAFT_PROVIDER=adsb_lol`                                      |     | ✓      |
-   | `AIRCRAFT_PROVIDER_USER_AGENT` (API: admin board aircraft photos) | ✓   | ✓      |
-   | `WORKER_POLL_INTERVAL_SECONDS=30`                                 |     | ✓      |
+   | Variable                                                                                                                            | API | Worker |
+   | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ------ |
+   | `NODE_ENV=production`                                                                                                               | ✓   | ✓      |
+   | `DATABASE_URL` (session pooler, ending `?sslmode=require`)                                                                          | ✓   | ✓      |
+   | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`                                                                   | ✓   |        |
+   | `TRUST_PROXY=true` (Railway sits behind a proxy)                                                                                    | ✓   |        |
+   | `CORS_ALLOWED_ORIGINS` (your web app's origin, when it exists)                                                                      | ✓   |        |
+   | `AIRCRAFT_PROVIDER=adsb_lol`                                                                                                        |     | ✓      |
+   | `AIRCRAFT_PROVIDER_USER_AGENT` (API: admin board aircraft photos)                                                                   | ✓   | ✓      |
+   | `WORKER_POLL_INTERVAL_SECONDS=30`                                                                                                   |     | ✓      |
+   | Cutouts (optional): `CUTOUT_PROVIDER`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, plus `CUTOUT_REMBG_URL` or `CUTOUT_REMOVE_BG_API_KEY` |     | ✓      |
 
    Don't set `API_PORT`: Railway provides `PORT` and the API uses it.
 
@@ -101,9 +102,29 @@ bun apps/worker/dist/index.js    # worker (exactly one instance)
 See `.env.example`. Required for the API: `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `DATABASE_URL`. Required for
 the worker: `DATABASE_URL` and, unless `AIRCRAFT_PROVIDER=mock`,
-`AIRCRAFT_PROVIDER_USER_AGENT`. The API also uses `AIRCRAFT_PROVIDER_USER_AGENT`
+`AIRCRAFT_PROVIDER_USER_AGENT` (plus the cutout variables above when
+`CUTOUT_PROVIDER` is set). The API also uses `AIRCRAFT_PROVIDER_USER_AGENT`
 for the admin board's Planespotters.net photos; without it that one endpoint
 returns `not_ready`. Store secrets in the platform's secret manager.
+
+## Cutouts (background removal)
+
+The Images page's **Remove background** queues a cutout; the worker makes it
+when `CUTOUT_PROVIDER` is set (otherwise requests stay queued). Two options:
+
+- **rembg, self-hosted (free).** Add a Railway service from the Docker image
+  `danielgatis/rembg` with start command `rembg s --host 0.0.0.0 --port 7000`,
+  no public domain, and at least 2 GB of memory. Point the worker at it over
+  the private network: `CUTOUT_PROVIDER=rembg`,
+  `CUTOUT_REMBG_URL=http://<service>.railway.internal:7000`. The model
+  (`CUTOUT_REMBG_MODEL`, default `isnet-general-use`, ~180 MB) downloads on
+  the first request. Avoid rembg's own default, `bria-rmbg`: its licence is
+  non-commercial.
+- **remove.bg (paid, nothing to run).** `CUTOUT_PROVIDER=remove_bg`,
+  `CUTOUT_REMOVE_BG_API_KEY=...`. Output is cropped to the aircraft.
+
+Either way the worker also needs `SUPABASE_URL` and `SUPABASE_SECRET_KEY` to
+store the PNGs. Only photos whose licence allows edited copies are processed.
 
 ## ADS-B provider
 

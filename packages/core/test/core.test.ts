@@ -6,6 +6,8 @@ import {
   appName,
   appSlug,
   buildObjectPath,
+  cutoutPath,
+  cutoutRefusal,
   createLogger,
   destination,
   distanceM,
@@ -77,6 +79,28 @@ describe('environment validation', () => {
     expect(loadEnv(workerEnvSchema, { ...base, AIRCRAFT_PROVIDER: 'mock' }).AIRCRAFT_PROVIDER).toBe(
       'mock',
     );
+  });
+
+  test('cutouts need a configured remover and Storage access', () => {
+    const base = { DATABASE_URL: valid.DATABASE_URL, AIRCRAFT_PROVIDER: 'mock' };
+    expect(loadEnv(workerEnvSchema, base).CUTOUT_PROVIDER).toBe('none');
+    expect(() => loadEnv(workerEnvSchema, { ...base, CUTOUT_PROVIDER: 'rembg' })).toThrow(
+      /CUTOUT_REMBG_URL[\s\S]*SUPABASE_URL|SUPABASE_URL[\s\S]*CUTOUT_REMBG_URL/,
+    );
+    const storage = {
+      SUPABASE_URL: valid.SUPABASE_URL,
+      SUPABASE_SECRET_KEY: valid.SUPABASE_SECRET_KEY,
+    };
+    expect(() =>
+      loadEnv(workerEnvSchema, { ...base, ...storage, CUTOUT_PROVIDER: 'remove_bg' }),
+    ).toThrow('CUTOUT_REMOVE_BG_API_KEY');
+    const env = loadEnv(workerEnvSchema, {
+      ...base,
+      ...storage,
+      CUTOUT_PROVIDER: 'rembg',
+      CUTOUT_REMBG_URL: 'http://rembg:7000',
+    });
+    expect(env.CUTOUT_REMBG_MODEL).toBe('isnet-general-use');
   });
 
   test('the legacy AIRPLANES_LIVE_USER_AGENT still satisfies the User-Agent requirement', () => {
@@ -283,5 +307,33 @@ describe('artwork matching precedence', () => {
     expect(pick({ registration: 'N202OH', operator_icao: null, icao_type_code: 'A320' })).toBe(
       'fallback',
     );
+  });
+});
+
+describe('cutouts', () => {
+  const photo = (source_provider: string, license_name: string | null) => ({
+    source_provider,
+    license_name,
+    storage_path: null,
+  });
+
+  test('only photos whose licence allows edited copies may be cut out', () => {
+    expect(cutoutRefusal(photo('wikimedia_commons', 'CC BY-SA 4.0'))).toBeNull();
+    expect(cutoutRefusal(photo('wikimedia_commons', 'Public domain'))).toBeNull();
+    expect(cutoutRefusal(photo('wikimedia_commons', 'CC BY-ND 2.0'))).toMatch(/does not allow/);
+    expect(cutoutRefusal(photo('wikimedia_commons', 'CC BY-NC-ND 3.0'))).toMatch(/not allow/);
+    expect(cutoutRefusal(photo('wikimedia_commons', null))).toMatch(/No licence/);
+    expect(cutoutRefusal(photo('planespotters', null))).toMatch(/only be linked/);
+    expect(cutoutRefusal(photo('adsbdb', null))).toMatch(/no licence/);
+    // The owner's own upload.
+    expect(
+      cutoutRefusal({ source_provider: 'upload', license_name: null, storage_path: 'x/y.png' }),
+    ).toBeNull();
+  });
+
+  test('cutouts live under the owner’s cutout folder', () => {
+    const id = '22222222-2222-4222-8222-222222222222';
+    expect(cutoutPath(OWNER, id)).toBe(`${OWNER}/cutout/${id}.png`);
+    expect(isOwnedObjectPath(cutoutPath(OWNER, id), OWNER)).toBe(true);
   });
 });

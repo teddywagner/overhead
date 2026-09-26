@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, unwrap, type Schemas } from '../api';
-import { fmtAgo, fmtNum, planeType } from '../format';
+import { fmtAgo, fmtNum, planeType, route, routeNames } from '../format';
 import { PhotoPicker } from '../components/PhotoPicker';
 import {
   PROVIDER_LABEL,
   planePhoto,
   savePhoto,
+  setCollectionBest,
   unsavePhoto,
+  type CollectionPhoto,
+  type PhotoPickResult,
   type PlanePhoto,
   type SavedPhoto,
 } from '../planespotters';
@@ -14,6 +17,27 @@ import { useUsers } from '../useUsers';
 
 type Report = Schemas['SeenAircraftReport'];
 type Seen = Schemas['SeenAircraft'];
+type Slot = Report['collection'][number];
+type SlotKey = { operator_icao: string | null; icao_type_code: string };
+
+const slotOf = (p: {
+  operator_icao: string | null;
+  icao_type_code: string | null;
+}): SlotKey | null =>
+  p.icao_type_code ? { operator_icao: p.operator_icao, icao_type_code: p.icao_type_code } : null;
+const sameSlot = (a: SlotKey, b: { operator_icao: string | null; icao_type_code: string | null }) =>
+  a.icao_type_code === b.icao_type_code && a.operator_icao === b.operator_icao;
+const slotName = (p: {
+  operator_name?: string | null;
+  operator_icao: string | null;
+  icao_type_code: string | null;
+}) => `${p.operator_name ?? p.operator_icao ?? 'Private / unknown'} ${p.icao_type_code ?? ''}`;
+
+/** Drop the pick result's extras, keeping the saved photo itself. */
+const asSaved = (result: PhotoPickResult): NonNullable<SavedPhoto> => {
+  const { collection: _collection, ...saved } = result;
+  return saved as NonNullable<SavedPhoto>;
+};
 
 const MAKERS = [
   ['', 'All makers'],
@@ -95,7 +119,15 @@ function Distribution({
  * default (fetched once the card scrolls into view). Save keeps the shown
  * photo; More photos opens the picker.
  */
-function Photo({ plane, onChange }: { plane: Seen; onChange: (saved: SavedPhoto | null) => void }) {
+function Photo({
+  plane,
+  onPicked,
+  onUnsaved,
+}: {
+  plane: Seen;
+  onPicked: (result: PhotoPickResult) => void;
+  onUnsaved: (removedId: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [photo, setPhoto] = useState<PlanePhoto | null | undefined>(undefined);
@@ -126,17 +158,16 @@ function Photo({ plane, onChange }: { plane: Seen; onChange: (saved: SavedPhoto 
     };
   }, [visible, saved, plane.icao24, plane.registration]);
 
-  const act = (run: () => Promise<SavedPhoto | null>) => {
+  const act = (run: () => Promise<void>) => {
     setBusy(true);
     setError('');
     run()
-      .then(onChange)
       .catch((e: Error) => setError(e.message))
       .finally(() => setBusy(false));
   };
   const save = () =>
-    photo && act(() => savePhoto(plane.icao24, plane.registration, photo.large_url));
-  const unsave = () => saved && act(() => unsavePhoto(saved.id).then(() => null));
+    photo && act(() => savePhoto(plane.icao24, plane.registration, photo.large_url).then(onPicked));
+  const unsave = () => saved && act(() => unsavePhoto(saved.id).then(() => onUnsaved(saved.id)));
 
   const shown = saved
     ? { src: saved.thumbnail_url, link: saved.page_url ?? saved.image_url }
@@ -193,10 +224,248 @@ function Photo({ plane, onChange }: { plane: Seen; onChange: (saved: SavedPhoto 
           onClose={() => setPicking(false)}
           onSaved={(p) => {
             setPicking(false);
-            onChange(p);
+            onPicked(p);
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Where this airframe stands in the photo collection. */
+function CollectionStatus({
+  plane,
+  onCompare,
+}: {
+  plane: Seen;
+  onCompare: (candidate: CollectionPhoto) => void;
+}) {
+  if (!plane.icao_type_code) return null;
+  const best = plane.collection_best;
+  const saved = plane.saved_photo;
+  const name = slotName(plane);
+  if (!best) {
+    return (
+      <div className="small">
+        <span className="badge warn" title="Save a photo of this plane to fill the slot">
+          ○ Needed: {name}
+        </span>
+      </div>
+    );
+  }
+  if (saved && best.id === saved.id) {
+    return (
+      <div className="small">
+        <span className="badge ok">✓ Best {name}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="small row">
+      <span className="muted">
+        ✓ {name} collected
+        {best.registration && best.registration !== plane.registration
+          ? ` (${best.registration})`
+          : ''}
+      </span>
+      {saved && (
+        <button
+          className="ghost small"
+          onClick={() =>
+            onCompare({ ...saved, icao24: plane.icao24, registration: plane.registration })
+          }
+        >
+          Compare
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The photo collection: every operator + type seen, checked off once it has a
+ * best photo. Clicking a slot filters the page to it.
+ */
+function Collection({ slots, onPick }: { slots: Slot[]; onPick: (s: Slot) => void }) {
+  const [all, setAll] = useState(false);
+  const groups = new Map<string, { name: string; passes: number; slots: Slot[] }>();
+  for (const s of slots) {
+    const key = s.operator_icao ?? '';
+    const g = groups.get(key) ?? {
+      name: s.operator_name ?? s.operator_icao ?? 'Private / unknown operator',
+      passes: 0,
+      slots: [],
+    };
+    g.passes += s.passes;
+    g.slots.push(s);
+    groups.set(key, g);
+  }
+  const sorted = [...groups.values()].sort((a, b) => b.passes - a.passes);
+  const shown = all ? sorted : sorted.slice(0, 8);
+  const done = slots.filter((s) => s.best).length;
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <h2>
+          Photo collection{' '}
+          <span className="muted small">
+            {done} of {slots.length} operator + type combinations have a best photo
+          </span>
+        </h2>
+        {sorted.length > 8 && (
+          <button className="ghost small" onClick={() => setAll(!all)}>
+            {all ? 'Top 8 operators' : `All ${sorted.length} operators`}
+          </button>
+        )}
+      </div>
+      <div className="bar-track collection-progress">
+        <span
+          className="bar-fill"
+          style={{ width: `${slots.length ? (done / slots.length) * 100 : 0}%` }}
+        />
+      </div>
+      {slots.length === 0 ? (
+        <p className="muted small">No aircraft of a known type in this period.</p>
+      ) : (
+        <div className="collection">
+          {shown.map((g) => (
+            <div key={g.name} className="collection-group">
+              <div className="small">
+                <span className="strong">{g.name}</span>{' '}
+                <span className="muted">
+                  {g.slots.filter((s) => s.best).length}/{g.slots.length}
+                </span>
+              </div>
+              <div className="chips">
+                {g.slots.map((s) => (
+                  <button
+                    key={s.icao_type_code}
+                    className={`chip${s.best ? ' done' : ''}`}
+                    title={`${[s.manufacturer, s.model].filter(Boolean).join(' ') || s.icao_type_code}: ${s.passes} passes by ${s.airframes} airframes. ${
+                      s.best
+                        ? `Best photo: ${s.best.registration ?? s.best.icao24 ?? 'saved'}.`
+                        : 'No photo yet.'
+                    } Click to show these planes.`}
+                    onClick={() => onPick(s)}
+                  >
+                    {s.best ? (
+                      <img src={s.best.thumbnail_url} alt="" loading="lazy" />
+                    ) : (
+                      <span className="chip-empty">○</span>
+                    )}
+                    {s.icao_type_code}
+                    {s.best && ' ✓'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface Comparison {
+  slot: SlotKey;
+  name: string;
+  best: CollectionPhoto;
+  candidate: CollectionPhoto;
+}
+
+function ComparePhoto({
+  title,
+  photo,
+  busy,
+  current,
+  onChoose,
+}: {
+  title: string;
+  photo: CollectionPhoto;
+  busy: boolean;
+  current: boolean;
+  onChoose: () => void;
+}) {
+  return (
+    <div className="compare-side">
+      <div className="small strong">{title}</div>
+      <a
+        className="compare-photo"
+        href={photo.page_url ?? photo.image_url}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <img src={photo.image_url} alt={photo.registration ?? ''} />
+      </a>
+      <div className="small">
+        {photo.registration ?? photo.icao24?.toUpperCase() ?? 'Unknown airframe'} ·{' '}
+        {PROVIDER_LABEL[photo.provider] ?? photo.provider}
+      </div>
+      <div className="muted small credit-line">
+        {[photo.creator && `© ${photo.creator}`, photo.license_name].filter(Boolean).join(' · ') ||
+          'No credit given'}
+      </div>
+      <button className={current ? 'ghost' : ''} disabled={busy} onClick={onChoose}>
+        {current ? 'Keep this one' : 'Use this one'}
+      </button>
+    </div>
+  );
+}
+
+/** Side by side: the slot's current best and a newer pick. */
+function Compare({
+  c,
+  onClose,
+  onChosen,
+}: {
+  c: Comparison;
+  onClose: () => void;
+  onChosen: (best: CollectionPhoto) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const choose = () => {
+    setBusy(true);
+    setError('');
+    setCollectionBest(c.candidate.id)
+      .then((entry) => onChosen(entry.best))
+      .catch((e: Error) => {
+        setError(e.message);
+        setBusy(false);
+      });
+  };
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+        <div className="panel-head">
+          <h2>Best photo for {c.name}?</h2>
+          <button className="ghost small" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <p className="muted small">
+          Your collection keeps one best photo per operator and aircraft type. Both photos stay
+          saved on their airframes either way.
+        </p>
+        {error && <p className="notice error">{error}</p>}
+        <div className="compare">
+          <ComparePhoto
+            title="Current best"
+            photo={c.best}
+            busy={busy}
+            current
+            onChoose={onClose}
+          />
+          <ComparePhoto
+            title="New photo"
+            photo={c.candidate}
+            busy={busy}
+            current={false}
+            onChoose={choose}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -210,7 +479,9 @@ export function Aircraft() {
   const [noHelicopters, setNoHelicopters] = useState(false);
   const [typeCode, setTypeCode] = useState<string | undefined>();
   const [operator, setOperator] = useState<string | undefined>();
+  const [onlyMissing, setOnlyMissing] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
+  const [compare, setCompare] = useState<Comparison | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -254,6 +525,52 @@ export function Aircraft() {
     airframes: o.airframes,
   }));
   const capped = (n: number) => (n >= 50 ? '50+' : String(n));
+
+  /** Set (or clear) the best photo of a slot everywhere it shows. */
+  const applyBest = (slot: SlotKey, best: CollectionPhoto | null) =>
+    setReport(
+      (r) =>
+        r && {
+          ...r,
+          items: r.items.map((i) => (sameSlot(slot, i) ? { ...i, collection_best: best } : i)),
+          collection: (r.collection ?? []).map((s) => (sameSlot(slot, s) ? { ...s, best } : s)),
+        },
+    );
+
+  const setSaved = (icao24: string, saved: SavedPhoto | null) =>
+    setReport(
+      (r) =>
+        r && {
+          ...r,
+          items: r.items.map((i) => (i.icao24 === icao24 ? { ...i, saved_photo: saved } : i)),
+        },
+    );
+
+  const onPicked = (plane: Seen, result: PhotoPickResult) => {
+    setSaved(plane.icao24, asSaved(result));
+    const { status, slot, best } = result.collection;
+    if (!slot || !best) return;
+    applyBest(slot, best);
+    if (status === 'kept_existing') {
+      setCompare({
+        slot,
+        name: slotName(plane),
+        best,
+        candidate: { ...asSaved(result), icao24: plane.icao24, registration: plane.registration },
+      });
+    }
+  };
+
+  const onUnsaved = (plane: Seen, removedId: string) => {
+    setSaved(plane.icao24, null);
+    // Removing a slot's best photo empties the slot.
+    const slot = slotOf(plane);
+    if (slot && plane.collection_best?.id === removedId) applyBest(slot, null);
+  };
+
+  const shownItems = (report?.items ?? []).filter(
+    (p) => !onlyMissing || (p.icao_type_code && !p.collection_best),
+  );
 
   return (
     <section>
@@ -300,6 +617,14 @@ export function Aircraft() {
             onChange={(e) => setNoHelicopters(e.target.checked)}
           />
           hide helicopters
+        </label>
+        <label className="check" title="Planes whose operator + type has no best photo yet">
+          <input
+            type="checkbox"
+            checked={onlyMissing}
+            onChange={(e) => setOnlyMissing(e.target.checked)}
+          />
+          only missing from my collection
         </label>
         {typeCode && (
           <button className="ghost small" onClick={() => setTypeCode(undefined)}>
@@ -354,30 +679,31 @@ export function Aircraft() {
             />
           </div>
 
+          <Collection
+            slots={report.collection ?? []}
+            onPick={(s) => {
+              setTypeCode(s.icao_type_code);
+              if (s.operator_icao) setOperator(s.operator_icao);
+            }}
+          />
+
           <h2>
             Airframes{' '}
             <span className="muted small">
-              {report.items.length < report.airframes
-                ? `showing the ${report.items.length} most seen of ${report.airframes}`
-                : `${report.airframes}`}
+              {onlyMissing
+                ? `${shownItems.length} missing from your collection`
+                : report.items.length < report.airframes
+                  ? `showing the ${report.items.length} most seen of ${report.airframes}`
+                  : `${report.airframes}`}
             </span>
           </h2>
           <div className="art-grid">
-            {report.items.map((p) => (
+            {shownItems.map((p) => (
               <div key={p.icao24} className="art-card static">
                 <Photo
                   plane={p}
-                  onChange={(saved) =>
-                    setReport(
-                      (r) =>
-                        r && {
-                          ...r,
-                          items: r.items.map((i) =>
-                            i.icao24 === p.icao24 ? { ...i, saved_photo: saved } : i,
-                          ),
-                        },
-                    )
-                  }
+                  onPicked={(result) => onPicked(p, result)}
+                  onUnsaved={(id) => onUnsaved(p, id)}
                 />
                 <div className="art-meta">
                   <div className="strong">{p.registration ?? p.icao24.toUpperCase()}</div>
@@ -394,11 +720,45 @@ export function Aircraft() {
                   <div className="muted small">
                     closest {fmtNum(p.closest_distance_m, ' m')} · {p.icao24}
                   </div>
+                  {(p.recent_routes ?? []).map((r) => (
+                    <div
+                      key={`${r.origin_code}-${r.destination_code}`}
+                      className="small route"
+                      title={routeNames(r) ?? undefined}
+                    >
+                      ✈ <span className="strong">{route(r)}</span>
+                      {r.flight_number ? ` · ${r.flight_number}` : ''}
+                      {r.passes > 1 ? <span className="muted"> ×{r.passes}</span> : ''}
+                      {routeNames(r) && <div className="muted small">{routeNames(r)}</div>}
+                    </div>
+                  ))}
+                  <CollectionStatus
+                    plane={p}
+                    onCompare={(candidate) =>
+                      p.collection_best &&
+                      setCompare({
+                        slot: slotOf(p)!,
+                        name: slotName(p),
+                        best: p.collection_best,
+                        candidate,
+                      })
+                    }
+                  />
                 </div>
               </div>
             ))}
           </div>
         </>
+      )}
+      {compare && (
+        <Compare
+          c={compare}
+          onClose={() => setCompare(null)}
+          onChosen={(best) => {
+            applyBest(compare.slot, best);
+            setCompare(null);
+          }}
+        />
       )}
     </section>
   );

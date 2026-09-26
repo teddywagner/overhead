@@ -2,6 +2,7 @@ import { z } from '@hono/zod-openapi';
 import {
   ART_SCOPES,
   ART_STATUSES,
+  CUTOUT_STATUSES,
   IMAGE_CONTENT_TYPES,
   OVERFLIGHT_STATUSES,
   POSTER_STATUSES,
@@ -178,7 +179,7 @@ export const aircraftQuerySchema = z.object({
 // Overflights
 // ---------------------------------------------------------------------------
 export const OVERFLIGHT_COLUMNS =
-  'id,location_id,aircraft_id,provider,icao24,registration,callsign,flight_number,origin_code,destination_code,first_seen_at,closest_seen_at,last_seen_at,local_date,minimum_distance_m,minimum_altitude_ft,closest_altitude_ft,heading,status,qualification_reason,created_at';
+  'id,location_id,aircraft_id,provider,icao24,registration,callsign,flight_number,origin_code,destination_code,origin_name:raw_summary->route->>originName,destination_name:raw_summary->route->>destinationName,first_seen_at,closest_seen_at,last_seen_at,local_date,minimum_distance_m,minimum_altitude_ft,closest_altitude_ft,heading,status,qualification_reason,created_at';
 
 const embeddedAircraft = z
   .object({
@@ -201,6 +202,8 @@ export const overflightSchema = z
     flight_number: z.string().nullable(),
     origin_code: z.string().nullable(),
     destination_code: z.string().nullable(),
+    origin_name: z.string().nullable(),
+    destination_name: z.string().nullable(),
     first_seen_at: ts,
     closest_seen_at: ts,
     last_seen_at: ts,
@@ -213,15 +216,28 @@ export const overflightSchema = z
     qualification_reason: z.enum(QUALIFICATION_REASONS),
     created_at: ts,
     aircraft: embeddedAircraft.optional(),
+    closest_latitude: z
+      .number()
+      .nullable()
+      .optional()
+      .openapi({ description: 'Only with include_position=true (private).' }),
+    closest_longitude: z
+      .number()
+      .nullable()
+      .optional()
+      .openapi({ description: 'Only with include_position=true (private).' }),
   })
   .openapi('Overflight');
+
+export const includePositionQuery = z
+  .enum(['true', 'false'])
+  .optional()
+  .openapi({ description: 'Include closest-approach coordinates (private).' });
 
 export const overflightDetailSchema = overflightSchema
   .extend({
     provider_pass_key: z.string(),
     raw_summary: jsonObject,
-    closest_latitude: z.number().nullable().optional(),
-    closest_longitude: z.number().nullable().optional(),
   })
   .openapi('OverflightDetail');
 
@@ -233,6 +249,7 @@ export const overflightQuerySchema = z.object({
   type_code: typeCode.optional(),
   operator: operatorIcao.optional(),
   status: z.enum(OVERFLIGHT_STATUSES).optional(),
+  include_position: includePositionQuery,
 });
 
 export const overflightPointSchema = z
@@ -966,6 +983,24 @@ export const adminSourceImageSchema = z
     created_at: ts,
     art_count: z.number().int(),
     image_url: z.string().nullable(),
+    cutout: z
+      .object({
+        status: z.enum(CUTOUT_STATUSES),
+        image_url: z
+          .string()
+          .nullable()
+          .describe('Signed link to the transparent PNG once done (valid 10 minutes).'),
+        error: z.string().nullable(),
+        attempts: z.number().int(),
+        requested_at: ts,
+        processed_at: ts.nullable(),
+      })
+      .nullable()
+      .describe('The background-removed copy, if one was requested.'),
+    cutout_refusal: z
+      .string()
+      .nullable()
+      .describe('Why this photo may not be cut out (its licence), or null when it may.'),
   })
   .openapi('AdminSourceImage');
 
@@ -1032,6 +1067,48 @@ export const savedPhotoSchema = z
     description: 'A photo picked for an airframe. Links only; the image is never downloaded.',
   });
 
+// Not a registered component: the generator drops `.nullable()` on refs, and
+// this is nullable wherever it appears.
+export const collectionPhotoSchema = z
+  .object({
+    ...savedPhotoSchema.shape,
+    icao24: z.string().nullable(),
+    registration: z.string().nullable(),
+  })
+  .describe('The best saved photo for an operator + aircraft type slot, and its airframe.');
+
+export const collectionSlotKeySchema = z.object({
+  operator_icao: z.string().nullable(),
+  icao_type_code: z.string(),
+});
+
+export const photoPickResultSchema = savedPhotoSchema
+  .extend({
+    collection: z.object({
+      status: z.enum(['added', 'already_best', 'kept_existing', 'no_type']).openapi({
+        description:
+          '`added`: the operator + type slot was empty and this photo now fills it. ' +
+          "`already_best`: it was already the slot's best. `kept_existing`: the slot " +
+          'already has a different best photo (compare them and choose with PUT ' +
+          '/photo-collection). `no_type`: the aircraft type is unknown, so there is no slot.',
+      }),
+      slot: collectionSlotKeySchema.nullable(),
+      best: collectionPhotoSchema.nullable(),
+    }),
+  })
+  .openapi('PhotoPickResult');
+
+export const photoCollectionSetSchema = z
+  .object({ source_image_id: uuid })
+  .strict()
+  .openapi('PhotoCollectionSet', {
+    description: 'Make one of your saved photos the best for its operator + type slot.',
+  });
+
+export const photoCollectionEntrySchema = collectionSlotKeySchema
+  .extend({ best: collectionPhotoSchema })
+  .openapi('PhotoCollectionEntry');
+
 export const photoCandidateSchema = z
   .object({
     provider: photoProviderSchema,
@@ -1087,6 +1164,25 @@ export const seenAircraftSchema = z
     last_seen_at: ts,
     closest_distance_m: z.number(),
     saved_photo: savedPhotoSchema.nullable(),
+    recent_routes: z
+      .array(
+        z.object({
+          origin_code: z.string().nullable(),
+          destination_code: z.string().nullable(),
+          origin_name: z.string().nullable(),
+          destination_name: z.string().nullable(),
+          flight_number: z.string().nullable(),
+          passes: z.number().int(),
+          last_seen_at: ts,
+        }),
+      )
+      .openapi({ description: 'Up to 3 distinct routes it flew overhead, latest first.' }),
+    collection_best: collectionPhotoSchema
+      .nullable()
+      .describe(
+        "Your best photo for this airframe's operator + type slot (null when the slot is " +
+          'empty or the type is unknown). It may be of another airframe.',
+      ),
   })
   .openapi('SeenAircraft', { description: 'One airframe seen overhead in the period.' });
 
@@ -1129,9 +1225,20 @@ export const seenAircraftReportSchema = z
       }),
     ),
     items: z.array(seenAircraftSchema),
+    collection: z.array(
+      collectionSlotKeySchema.extend({
+        operator_name: z.string().nullable(),
+        manufacturer: z.string().nullable(),
+        model: z.string().nullable(),
+        passes: z.number().int(),
+        airframes: z.number().int(),
+        best: collectionPhotoSchema.nullable(),
+      }),
+    ),
   })
   .openapi('SeenAircraftReport', {
     description:
       'Airframes seen overhead, most-seen first, with pass counts by aircraft type and by ' +
-      'operator (top 50 each) over the same filtered passes.',
+      'operator (top 50 each) over the same filtered passes. `collection` lists every ' +
+      'operator + type slot seen (known types only, top 300) with your best photo for it.',
   });

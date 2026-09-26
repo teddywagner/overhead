@@ -51,6 +51,9 @@ export function planePhoto(
 
 export type PhotoCandidate = Schemas['PhotoCandidate'];
 export type SavedPhoto = Schemas['SavedPhoto'];
+export type PhotoPickResult = Schemas['PhotoPickResult'];
+export type CollectionPhoto = NonNullable<Schemas['SeenAircraft']['collection_best']>;
+export type CollectionEntry = Schemas['PhotoCollectionEntry'];
 
 /** Every photo on offer for an airframe, from all sources. */
 export const photoCandidates = (icao24: string, registration: string | null) =>
@@ -60,7 +63,10 @@ export const photoCandidates = (icao24: string, registration: string | null) =>
     }),
   );
 
-/** Save one of the offered photos as this airframe's pick. */
+/**
+ * Save one of the offered photos as this airframe's pick. `collection` says
+ * whether it filled its operator + type slot or there is a best to compare.
+ */
 export const savePhoto = (icao24: string, registration: string | null, imageUrl: string) =>
   unwrap(
     api.POST('/admin/v1/aircraft-photos/{icao24}/picks', {
@@ -68,6 +74,10 @@ export const savePhoto = (icao24: string, registration: string | null, imageUrl:
       body: { image_url: imageUrl, ...(registration ? { registration } : {}) },
     }),
   );
+
+/** Make a saved photo the best for its operator + type slot. */
+export const setCollectionBest = (sourceImageId: string) =>
+  unwrap(api.PUT('/admin/v1/photo-collection', { body: { source_image_id: sourceImageId } }));
 
 export const unsavePhoto = (id: string) =>
   unwrap(api.DELETE('/admin/v1/aircraft-photos/picks/{id}', { params: { path: { id } } }));

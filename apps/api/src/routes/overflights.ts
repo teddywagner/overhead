@@ -12,6 +12,7 @@ import { ok, page } from '../lib/envelope';
 import { createRouter, meta, okResponses } from '../lib/router';
 import {
   OVERFLIGHT_COLUMNS,
+  includePositionQuery,
   overflightDetailSchema,
   overflightPointSchema,
   overflightQuerySchema,
@@ -29,7 +30,8 @@ export const overflightsRouter = createRouter()
       ...meta(
         tag,
         'List overflights',
-        'Newest first by closest approach. Dates are local to the location. Closest-approach coordinates are omitted from lists.',
+        'Newest first by closest approach. Dates are local to the location. Closest-approach ' +
+          'coordinates are omitted unless include_position=true.',
       ),
       request: { query: overflightQuerySchema.extend(paginationQuery) },
       responses: okResponses(page(overflightSchema)),
@@ -40,10 +42,12 @@ export const overflightsRouter = createRouter()
         throw new AppError('validation_failed', 'from must not be after to');
       const after = decodeCursor(q.cursor);
       const needsInner = Boolean(q.type_code || q.operator);
+      const position = q.include_position === 'true' ? ',closest_latitude,closest_longitude' : '';
+      const columns: string = `${OVERFLIGHT_COLUMNS}${position},aircraft${needsInner ? '!inner' : ''}(${AIRCRAFT_EMBED})`;
       let query = c
         .get('db')
         .from('overflights')
-        .select(`${OVERFLIGHT_COLUMNS},aircraft${needsInner ? '!inner' : ''}(${AIRCRAFT_EMBED})`)
+        .select(columns)
         .eq('owner_id', c.get('userId'))
         .order('closest_seen_at', { ascending: false })
         .order('id', { ascending: false })
@@ -56,7 +60,7 @@ export const overflightsRouter = createRouter()
       if (q.type_code) query = query.eq('aircraft.icao_type_code', q.type_code);
       if (q.operator) query = query.eq('aircraft.operator_icao', q.operator);
       if (after) query = query.or(keysetFilter('closest_seen_at', 'id', after));
-      const rows = unwrap(await query, 'Overflights') as Array<Record<string, unknown>>;
+      const rows = unwrap(await query, 'Overflights') as unknown as Array<Record<string, unknown>>;
       return ok(c, {
         items: rows.slice(0, q.limit),
         next_cursor: nextCursor(rows, q.limit, 'closest_seen_at'),
@@ -70,12 +74,7 @@ export const overflightsRouter = createRouter()
       ...meta(tag, 'Get an overflight'),
       request: {
         params: uuidParam,
-        query: z.object({
-          include_position: z
-            .enum(['true', 'false'])
-            .optional()
-            .openapi({ description: 'Include closest-approach coordinates (private).' }),
-        }),
+        query: z.object({ include_position: includePositionQuery }),
       },
       responses: okResponses(overflightDetailSchema),
     }),

@@ -103,8 +103,50 @@ export const workerEnvSchema = baseEnvSchema
     OVERFLIGHT_POINT_MAX_PER_PASS: z.coerce.number().int().min(2).max(2000).default(200),
     RETENTION_INTERVAL_MINUTES: z.coerce.number().int().min(1).default(60),
     MOCK_SCENARIO: z.string().default('direct-crossing'),
+    /**
+     * Background removal for reference photos ("cutouts"). `rembg` is a
+     * self-hosted rembg server (`rembg s`); `remove_bg` is the remove.bg API.
+     */
+    CUTOUT_PROVIDER: z.enum(['none', 'rembg', 'remove_bg']).default('none'),
+    CUTOUT_REMBG_URL: z.string().trim().default(''),
+    CUTOUT_REMBG_MODEL: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9_-]{1,40}$/)
+      .default('isnet-general-use'),
+    CUTOUT_REMOVE_BG_API_KEY: z.string().trim().default(''),
+    CUTOUT_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(30),
+    /** Storage access for cutouts (the worker otherwise needs only Postgres). */
+    SUPABASE_URL: z.string().trim().default(''),
+    SUPABASE_SECRET_KEY: z.string().trim().default(''),
   })
   .superRefine((env, ctx) => {
+    if (env.CUTOUT_PROVIDER !== 'none') {
+      for (const key of ['SUPABASE_URL', 'SUPABASE_SECRET_KEY'] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `is required when CUTOUT_PROVIDER=${env.CUTOUT_PROVIDER} (cutouts are stored in Supabase Storage)`,
+          });
+        }
+      }
+    }
+    if (env.CUTOUT_PROVIDER === 'rembg' && !/^https?:\/\//.test(env.CUTOUT_REMBG_URL)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CUTOUT_REMBG_URL'],
+        message:
+          'is required when CUTOUT_PROVIDER=rembg (the rembg server, e.g. http://rembg:7000)',
+      });
+    }
+    if (env.CUTOUT_PROVIDER === 'remove_bg' && !env.CUTOUT_REMOVE_BG_API_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CUTOUT_REMOVE_BG_API_KEY'],
+        message: 'is required when CUTOUT_PROVIDER=remove_bg',
+      });
+    }
     if (env.AIRCRAFT_PROVIDER !== 'mock' && providerUserAgent(env).length === 0) {
       ctx.addIssue({
         code: 'custom',
