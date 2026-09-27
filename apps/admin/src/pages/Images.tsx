@@ -48,11 +48,7 @@ function Thumb({ image, onChange }: { image: Image; onChange: (i: Image) => void
             {showCutout ? 'Show original' : 'Show cutout'}
           </button>
         )}
-        {image.cutout_refusal ? (
-          <span className="muted small" title={image.cutout_refusal}>
-            No cutout: {image.cutout_refusal}
-          </span>
-        ) : working ? (
+        {working ? (
           <span className="badge">{CUTOUT_LABEL[cutout!.status]}</span>
         ) : (
           <button className="ghost small" disabled={busy} onClick={request}>
@@ -64,6 +60,11 @@ function Thumb({ image, onChange }: { image: Image; onChange: (i: Image) => void
           </button>
         )}
       </div>
+      {image.cutout_refusal && (
+        <div className="muted small cutout-warning" title={image.cutout_refusal}>
+          ⚠ Testing only: {image.cutout_refusal}
+        </div>
+      )}
       {cutout?.status === 'failed' && (
         <div className="notice error small">
           {cutout.error ?? 'Background removal failed'}
@@ -113,8 +114,8 @@ export function Images() {
         Photos used as references for artwork, with their licence and attribution. Picked photos are
         links to their source. <strong>Remove background</strong> has the worker cut the aircraft
         out into a transparent PNG kept with the owner’s images; it is only offered where the
-        licence allows edited copies (your own uploads and Wikimedia Commons photos), not for
-        Planespotters.net or airport-data.com photos.
+        licence allows edited copies (your own uploads and Wikimedia Commons photos). Licence checks
+        are switched off for testing, so other photos can be cut out too; they are marked ⚠.
       </p>
       <div className="filters">
         <select value={owner} onChange={(e) => setOwner(e.target.value)}>

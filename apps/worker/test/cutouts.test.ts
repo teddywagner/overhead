@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { silentLogger } from '@overhead/core';
+import { CUTOUTS_IGNORE_LICENCES, silentLogger } from '@overhead/core';
 import {
   CutoutError,
   RembgRemover,
@@ -137,16 +137,28 @@ describe('cutouts', () => {
     expect(store.done).toHaveLength(1);
   });
 
-  test('licences are re-checked: linked-only photos fail for good', async () => {
-    const { store, worker, seen } = setup();
-    const j = job({ sourceProvider: 'planespotters', licenseName: null });
-    store.queue.push(j);
-    expect((await worker.runOnce()).failed).toBe(1);
-    expect(seen).toHaveLength(0);
-    expect(store.failed).toEqual([
-      { id: j.id, message: expect.stringMatching(/Planespotters/), retryable: false },
-    ]);
-  });
+  test.skipIf(CUTOUTS_IGNORE_LICENCES)(
+    'licences are re-checked: linked-only photos fail for good',
+    async () => {
+      const { store, worker, seen } = setup();
+      const j = job({ sourceProvider: 'planespotters', licenseName: null });
+      store.queue.push(j);
+      expect((await worker.runOnce()).failed).toBe(1);
+      expect(seen).toHaveLength(0);
+      expect(store.failed).toEqual([
+        { id: j.id, message: expect.stringMatching(/Planespotters/), retryable: false },
+      ]);
+    },
+  );
+
+  test.skipIf(!CUTOUTS_IGNORE_LICENCES)(
+    'with licence checks off, linked-only photos are cut out too',
+    async () => {
+      const { store, worker } = setup();
+      store.queue.push(job({ sourceProvider: 'planespotters', licenseName: null }));
+      expect((await worker.runOnce()).done).toBe(1);
+    },
+  );
 
   test('non-images and oversized photos are not retried; remover outages are', async () => {
     const notImage = setup(
