@@ -11,6 +11,7 @@ import {
   type Schemas,
   type ScoredCandidate,
 } from '../api';
+import { Highlights } from '../components/Highlights';
 import {
   fmtAgo,
   fmtDuration,
@@ -611,6 +612,7 @@ function Candidates({
                   {planeType(c)} · {c.operator_icao ?? '—'}
                   {c.status === 'near_miss' ? ' · near miss' : ''}
                 </div>
+                <Highlights items={c.highlights} />
               </td>
               <td title={routeNames(c) ?? undefined}>
                 {route(c) ?? <span className="muted">—</span>}

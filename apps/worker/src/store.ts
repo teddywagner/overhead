@@ -157,9 +157,9 @@ export class PostgresWorkerStore implements WorkerStore {
     });
     const rows = (await tx`
       insert into public.aircraft (icao24, registration, icao_type_code, operator_name,
-                                   metadata_source, raw_metadata)
+                                   is_military, metadata_source, raw_metadata)
       values (${o.icao24}, ${o.registration}, ${o.icaoTypeCode}, ${o.operatorName},
-              ${o.provider}, ${raw}::jsonb)
+              ${o.military}, ${o.provider}, ${raw}::jsonb)
       on conflict (icao24) do update set
         registration = case when public.aircraft.metadata_source = 'manual'
                             then public.aircraft.registration
@@ -167,7 +167,9 @@ export class PostgresWorkerStore implements WorkerStore {
         icao_type_code = case when public.aircraft.metadata_source = 'manual'
                               then public.aircraft.icao_type_code
                               else coalesce(excluded.icao_type_code, public.aircraft.icao_type_code) end,
-        operator_name = coalesce(public.aircraft.operator_name, excluded.operator_name)
+        operator_name = coalesce(public.aircraft.operator_name, excluded.operator_name),
+        -- Once flagged, always flagged: feeds only ever set the bit.
+        is_military = public.aircraft.is_military or excluded.is_military
       returning id, (xmax = 0) as inserted`) as Row[];
     const row = rows[0]!;
     if (row.inserted) {

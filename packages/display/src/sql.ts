@@ -1,4 +1,5 @@
 import {
+  aircraftHighlights,
   matchArtAsset,
   type ArtCandidate,
   type ArtScope,
@@ -112,6 +113,34 @@ export async function loadDisplayDevices(
   return rows.map(toDevice);
 }
 
+/** Registration countries this far back decide where a location is. */
+const HOME_COUNTRY_DAYS = 90;
+
+/**
+ * The country a location is in, for spotting foreign aircraft: the country
+ * of registration most of its passes carry (adsbdb's spelling). Null until
+ * some of its aircraft have been looked up.
+ */
+export async function loadHomeCountry(
+  sql: Sql,
+  scope: { ownerId?: string | null; locationId?: string | null },
+  now: Date,
+): Promise<string | null> {
+  const ownerId = scope.ownerId ?? null;
+  const locationId = scope.locationId ?? null;
+  const until = now.toISOString();
+  const rows = (await sql`
+    select mode() within group (order by a.country) as country
+      from public.overflights o
+      join public.aircraft a on a.id = o.aircraft_id
+     where a.country is not null
+       and (${ownerId}::uuid is null or o.owner_id = ${ownerId}::uuid)
+       and (${locationId}::uuid is null or o.location_id = ${locationId}::uuid)
+       and o.closest_seen_at > ${until}::timestamptz - make_interval(days => ${HOME_COUNTRY_DAYS})
+       and o.closest_seen_at <= ${until}::timestamptz`) as Row[];
+  return strOrNull(rows[0]?.country);
+}
+
 /** Recorded passes at the device's location in the window ending at `now`. */
 export async function loadDisplayCandidates(
   sql: Sql,
@@ -128,7 +157,7 @@ export async function loadDisplayCandidates(
            o.raw_summary->'route'->>'destinationName' as destination_name,
            o.minimum_distance_m, o.closest_altitude_ft,
            a.icao_type_code, a.manufacturer, a.model, a.operator_name, a.operator_icao,
-           t.aircraft_class,
+           a.is_military, a.country, a.operator_country, t.aircraft_class,
            (select count(*)::int from public.overflights x
              where x.owner_id = o.owner_id and x.location_id = o.location_id
                and x.icao24 = o.icao24 and x.closest_seen_at <= ${until}::timestamptz
@@ -150,6 +179,7 @@ export async function loadDisplayCandidates(
      limit 500`) as Row[];
   if (rows.length === 0) return [];
 
+  const home = await loadHomeCountry(sql, device, now);
   const art = (await sql`
     select id, scope, status, registration, operator_icao, icao_type_code, livery_name, approved_at
       from public.art_assets
@@ -169,6 +199,17 @@ export async function loadDisplayCandidates(
     const registration = strOrNull(r.registration);
     const operatorIcao = strOrNull(r.operator_icao);
     const typeCode = strOrNull(r.icao_type_code);
+    const aircraft = {
+      icao24: String(r.icao24),
+      icao_type_code: typeCode,
+      manufacturer: strOrNull(r.manufacturer),
+      model: strOrNull(r.model),
+      military: Boolean(r.is_military),
+      country: strOrNull(r.country),
+      operator_name: strOrNull(r.operator_name),
+      operator_icao: operatorIcao,
+      operator_country: strOrNull(r.operator_country),
+    };
     const match = matchArtAsset(
       { registration, operator_icao: operatorIcao, icao_type_code: typeCode },
       assets,
@@ -197,6 +238,7 @@ export async function loadDisplayCandidates(
       art_scope: match?.scope ?? null,
       airframe_sightings: Number(r.airframe_sightings),
       type_sightings: numOrNull(r.type_sightings),
+      highlights: aircraftHighlights(aircraft, home),
     };
   });
 }

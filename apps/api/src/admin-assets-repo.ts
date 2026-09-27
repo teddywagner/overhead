@@ -1,6 +1,8 @@
 import {
   BUCKETS,
   CUTOUTS_IGNORE_LICENCES,
+  RARE_TYPES,
+  aircraftHighlights,
   cutoutRefusal,
   matchArtAsset,
   type ArtCandidate,
@@ -8,8 +10,10 @@ import {
   type ArtStatus,
   type BucketName,
   type CutoutStatus,
+  type Highlight,
 } from '@overhead/core';
 import type { Sql, TypedSupabaseClient } from '@overhead/database';
+import { loadHomeCountry } from '@overhead/display/sql';
 import { SIGNED_UPLOAD_TTL_SECONDS } from './lib/storage';
 
 /**
@@ -151,6 +155,8 @@ export interface SeenAircraft {
   recent_routes: SeenRoute[];
   /** The viewer's best photo for this airframe's operator + type slot. */
   collection_best: CollectionPhoto | null;
+  /** Why it is worth pointing out: military, rare type, foreign. */
+  highlights: Highlight[];
 }
 
 export interface SeenRoute {
@@ -235,6 +241,10 @@ export interface SeenOperatorCount {
 export interface SeenAircraftReport {
   passes: number;
   airframes: number;
+  /** Airframes with at least one highlight. */
+  interesting_airframes: number;
+  /** Where the passes were seen, as far as foreign aircraft go (see loadHomeCountry). */
+  home_country: string | null;
   by_type: SeenTypeCount[];
   by_operator: SeenOperatorCount[];
   /** Most-seen first; capped by the request's limit. */
@@ -255,6 +265,8 @@ export interface SeenAircraftFilter {
   manufacturers?: string[];
   /** Leave out helicopters. */
   excludeHelicopters?: boolean;
+  /** Only military, rare-type and foreign aircraft. */
+  interestingOnly?: boolean;
   limit: number;
 }
 
@@ -824,15 +836,25 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
     const makers = f.manufacturers?.length
       ? f.manufacturers.map((m) => m.trim().toLowerCase()).join(',')
       : null;
+    const home = await loadHomeCountry(this.sql, { ownerId: f.ownerId }, new Date());
+    const rare = Object.keys(RARE_TYPES).join(',');
     const [r] = (await this.sql`
-      with seen as (
+      with base as (
         select o.owner_id, o.icao24, o.first_seen_at, o.closest_seen_at, o.minimum_distance_m,
                o.origin_code, o.destination_code, o.flight_number,
                o.raw_summary->'route'->>'originName' as origin_name,
                o.raw_summary->'route'->>'destinationName' as destination_name,
                a.id as aircraft_id, coalesce(a.registration, o.registration) as registration,
                a.icao_type_code, a.manufacturer, a.model, a.operator_icao, a.operator_name,
-               a.country
+               a.country, a.operator_country, coalesce(a.is_military, false) as military,
+               -- SQL twin of aircraftHighlights (@overhead/core), which labels the results.
+               coalesce(a.is_military, false)
+                 or o.icao24 between 'ae0000' and 'afffff'
+                 or a.icao_type_code = any(string_to_array(${rare}::text, ','))
+                 or lower(a.operator_country) <> lower(${home}::text)
+                 or (lower(a.country) <> lower(${home}::text)
+                     and lower(a.country) is distinct from lower(a.operator_country))
+                 as interesting
           from public.overflights o
           left join public.aircraft a on a.id = o.aircraft_id
           left join public.aircraft_types ty on ty.icao_type_code = a.icao_type_code
@@ -848,6 +870,9 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
            and (${makers}::text is null or exists (
                  select 1 from unnest(string_to_array(${makers}::text, ',')) m
                   where lower(a.manufacturer) like m || '%'))
+      ),
+      seen as (
+        select * from base where coalesce(interesting, false) or not ${f.interestingOnly ?? false}
       ),
       -- The viewer's collection: best photo per operator + type slot.
       best as (
@@ -867,6 +892,7 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       select
         (select count(*)::int from seen) as passes,
         (select count(distinct icao24)::int from seen) as airframes,
+        (select count(distinct icao24)::int from seen where interesting) as interesting_airframes,
         (select coalesce(jsonb_agg(t order by t.passes desc, t.icao_type_code), '[]'::jsonb)
            from (select icao_type_code, max(manufacturer) as manufacturer, max(model) as model,
                         count(*)::int as passes, count(distinct icao24)::int as airframes
@@ -893,7 +919,8 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                         max(registration) as registration, max(icao_type_code) as icao_type_code,
                         max(manufacturer) as manufacturer, max(model) as model,
                         max(operator_icao) as operator_icao, max(operator_name) as operator_name,
-                        max(country) as country, count(*)::int as passes,
+                        max(country) as country, max(operator_country) as operator_country,
+                        bool_or(military) as military, count(*)::int as passes,
                         count(distinct owner_id)::int as users,
                         min(first_seen_at) as first_seen_at, max(closest_seen_at) as last_seen_at,
                         min(minimum_distance_m) as closest_distance_m,
@@ -926,28 +953,43 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                    from seen group by icao24
                   order by passes desc, last_seen_at desc limit ${f.limit}) t) as items`) as Row[];
 
-    const items = (r!.items as Row[]).map((i) => ({
-      icao24: String(i.icao24),
-      aircraft_id: strOrNull(i.aircraft_id),
-      registration: strOrNull(i.registration),
-      icao_type_code: strOrNull(i.icao_type_code),
-      manufacturer: strOrNull(i.manufacturer),
-      model: strOrNull(i.model),
-      operator_icao: strOrNull(i.operator_icao),
-      operator_name: strOrNull(i.operator_name),
-      country: strOrNull(i.country),
-      passes: Number(i.passes),
-      users: Number(i.users),
-      first_seen_at: iso(i.first_seen_at)!,
-      last_seen_at: iso(i.last_seen_at)!,
-      closest_distance_m: Number(i.closest_distance_m),
-      saved_photo: i.saved_photo ? savedPhoto(i.saved_photo as Row) : null,
-      recent_routes: ((i.recent_routes as Row[] | null) ?? []).map(seenRoute),
-      collection_best: i.collection_best ? collectionPhoto(i.collection_best as Row) : null,
-    }));
+    const items = (r!.items as Row[]).map((i) => {
+      const plane = {
+        icao24: String(i.icao24),
+        icao_type_code: strOrNull(i.icao_type_code),
+        manufacturer: strOrNull(i.manufacturer),
+        model: strOrNull(i.model),
+        operator_icao: strOrNull(i.operator_icao),
+        operator_name: strOrNull(i.operator_name),
+        country: strOrNull(i.country),
+      };
+      return {
+        ...plane,
+        aircraft_id: strOrNull(i.aircraft_id),
+        registration: strOrNull(i.registration),
+        passes: Number(i.passes),
+        users: Number(i.users),
+        first_seen_at: iso(i.first_seen_at)!,
+        last_seen_at: iso(i.last_seen_at)!,
+        closest_distance_m: Number(i.closest_distance_m),
+        saved_photo: i.saved_photo ? savedPhoto(i.saved_photo as Row) : null,
+        recent_routes: ((i.recent_routes as Row[] | null) ?? []).map(seenRoute),
+        collection_best: i.collection_best ? collectionPhoto(i.collection_best as Row) : null,
+        highlights: aircraftHighlights(
+          {
+            ...plane,
+            military: Boolean(i.military),
+            operator_country: strOrNull(i.operator_country),
+          },
+          home,
+        ),
+      };
+    });
     return {
       passes: Number(r!.passes),
       airframes: Number(r!.airframes),
+      interesting_airframes: Number(r!.interesting_airframes),
+      home_country: home,
       by_type: (r!.by_type as Row[]).map((t) => ({
         icao_type_code: strOrNull(t.icao_type_code),
         manufacturer: strOrNull(t.manufacturer),

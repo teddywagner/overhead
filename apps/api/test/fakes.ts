@@ -227,6 +227,8 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
   seen: SeenAircraftReport = {
     passes: 0,
     airframes: 0,
+    interesting_airframes: 0,
+    home_country: null,
     by_type: [],
     by_operator: [],
     items: [],

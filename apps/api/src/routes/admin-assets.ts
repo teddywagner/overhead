@@ -253,7 +253,10 @@ export const adminAssetsRouter = createRouter()
         'Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft ' +
           'type and by operator. `manufacturer` is a comma-separated list of name prefixes, ' +
           'e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, ' +
-          'and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown.',
+          'and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown. ' +
+          '`interesting` keeps only airframes with a highlight (military, rare Boeing or ' +
+          'Airbus type, foreign operator or registration); foreign means not from ' +
+          '`home_country`, the registration country most passes carry.',
       ),
       request: {
         query: z.object({
@@ -271,6 +274,10 @@ export const adminAssetsRouter = createRouter()
             .regex(/^[A-Za-z][A-Za-z .-]{0,39}(,[A-Za-z][A-Za-z .-]{0,39}){0,9}$/)
             .optional(),
           exclude_helicopters: z
+            .enum(['true', 'false'])
+            .optional()
+            .transform((v) => v === 'true'),
+          interesting: z
             .enum(['true', 'false'])
             .optional()
             .transform((v) => v === 'true'),
@@ -292,6 +299,7 @@ export const adminAssetsRouter = createRouter()
           operatorIcao: q.operator,
           manufacturers: q.manufacturer?.split(','),
           excludeHelicopters: q.exclude_helicopters,
+          interestingOnly: q.interesting,
           limit: q.limit,
         }),
       );

@@ -76,6 +76,8 @@ export interface PassDetail {
   icaoTypeCode: string | null;
   typeDescription: string | null;
   operatorName: string | null;
+  /** Absent in passes persisted before the flag existed. */
+  military?: boolean;
   closest: ClosestApproach;
   /** Best approach that satisfies both radius and altitude, if any. */
   crossing: ClosestApproach | null;
@@ -119,6 +121,7 @@ export interface OverflightDraft {
   icaoTypeCode: string | null;
   typeDescription: string | null;
   operatorName: string | null;
+  military: boolean;
   firstSeenAt: string;
   closestSeenAt: string;
   lastSeenAt: string;

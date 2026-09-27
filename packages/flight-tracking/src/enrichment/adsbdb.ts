@@ -31,6 +31,8 @@ export interface FlightRoute {
   airlineName: string | null;
   airlineIcao: string | null;
   airlineIata: string | null;
+  /** The airline's country, e.g. "United States". */
+  airlineCountry: string | null;
   /** e.g. "AA2995". */
   flightNumber: string | null;
   /** IATA code when known, else ICAO (e.g. "JFK" or "KJFK"). */
@@ -64,7 +66,11 @@ const routeSchema = z
   .object({
     callsign: str,
     callsign_iata: str,
-    airline: z.object({ name: str, icao: str, iata: str }).loose().nullable().optional(),
+    airline: z
+      .object({ name: str, icao: str, iata: str, country: str })
+      .loose()
+      .nullable()
+      .optional(),
     origin: airportSchema,
     destination: airportSchema,
   })
@@ -136,6 +142,7 @@ export function parseAdsbdbRoute(body: unknown): FlightRoute | null {
     airlineName: normalizeText(r.airline?.name, 160),
     airlineIcao: code(r.airline?.icao, /^[A-Z]{3}$/),
     airlineIata: code(r.airline?.iata, /^[A-Z0-9]{2}$/),
+    airlineCountry: normalizeText(r.airline?.country, 80),
     flightNumber: code(r.callsign_iata, /^[A-Z0-9]{3,10}$/),
     originCode: airportCode(r.origin),
     destinationCode: airportCode(r.destination),

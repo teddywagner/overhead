@@ -1,4 +1,4 @@
-import type { ArtScope, OverflightStatus } from '@overhead/core';
+import type { ArtScope, Highlight, OverflightStatus } from '@overhead/core';
 import type { DisplaySettings, DisplayWeights } from './settings';
 
 /** One recorded pass that a frame could show, with what we know about it. */
@@ -30,6 +30,8 @@ export interface DisplayCandidate {
   airframe_sightings: number;
   /** Passes of this aircraft type at the location so far; null when the type is unknown. */
   type_sightings: number | null;
+  /** Why this plane is worth pointing out (military, rare type, foreign); display only. */
+  highlights: Highlight[];
 }
 
 /** The location's detection rules, used to scale proximity. */
@@ -120,9 +122,15 @@ export function weightedScore(components: ScoreComponents, weights: DisplayWeigh
   return Math.round((raw / total) * 1000) / 10;
 }
 
+/** The ICAO type class when the type is known, else the maker. */
+export function isHelicopter(c: Pick<DisplayCandidate, 'aircraft_class' | 'manufacturer'>) {
+  if (c.aircraft_class) return c.aircraft_class === 'helicopter';
+  return /^(bell|eurocopter|airbus helicopters)\b/i.test(c.manufacturer ?? '');
+}
+
 function filterReason(c: DisplayCandidate, s: DisplaySettings): ExclusionReason | null {
   if (c.status === 'near_miss' && !s.include_near_misses) return 'near_miss';
-  if (c.aircraft_class === 'helicopter' && !s.include_helicopters) return 'helicopter';
+  if (!s.include_helicopters && isHelicopter(c)) return 'helicopter';
   if (s.airline_only && !c.operator_icao) return 'not_airline';
   return null;
 }

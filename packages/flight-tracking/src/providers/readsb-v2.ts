@@ -41,6 +41,8 @@ export const readsbAircraftSchema = z
     lon: numberish.optional(),
     seen_pos: numberish.optional(),
     seen: numberish.optional(),
+    /** Bit flags from the readsb aircraft database: 1 = military. */
+    dbFlags: numberish.optional(),
   })
   .loose();
 
@@ -100,6 +102,7 @@ export function normalizeReadsbAircraft(
     icaoTypeCode: normalizeTypeCode(ac.t),
     typeDescription: normalizeText(ac.desc, 120),
     operatorName: normalizeText(ac.ownOp, 160),
+    military: ((ac.dbFlags ?? 0) & 1) === 1,
     latitude: lat,
     longitude: lon,
     altitudeFt,

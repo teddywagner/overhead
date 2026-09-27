@@ -60,6 +60,7 @@ function candidate(id: string, over: Partial<DisplayCandidate> = {}): DisplayCan
     art_scope: null,
     airframe_sightings: 1,
     type_sightings: null,
+    highlights: [],
     ...over,
   };
 }
@@ -339,6 +340,7 @@ describe('artwork', () => {
       operatorIcao: 'JBU',
       manufacturers: ['Airbus', 'Boeing'],
       excludeHelicopters: false,
+      interestingOnly: false,
       limit: 200,
     });
     for (const bad of ['manufacturer=%27%3Bdrop', 'days=0', 'limit=501', 'operator=JB']) {

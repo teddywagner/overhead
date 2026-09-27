@@ -5447,7 +5447,7 @@ export interface paths {
         };
         /**
          * Planes seen overhead
-         * @description Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown.
+         * @description Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown. `interesting` keeps only airframes with a highlight (military, rare Boeing or Airbus type, foreign operator or registration); foreign means not from `home_country`, the registration country most passes carry.
          */
         get: {
             parameters: {
@@ -5459,6 +5459,7 @@ export interface paths {
                     operator?: string;
                     manufacturer?: string;
                     exclude_helicopters?: "true" | "false";
+                    interesting?: "true" | "false";
                     limit?: number;
                 };
                 header?: never;
@@ -7188,6 +7189,7 @@ export interface components {
             art_scope: "registration" | "operator_livery" | "operator_type" | "type" | "fallback" | null;
             airframe_sightings: number;
             type_sightings: number | null;
+            highlights: components["schemas"]["Highlight"][];
             score: number;
             components: {
                 rarity: number;
@@ -7198,6 +7200,12 @@ export interface components {
             };
             /** @enum {string|null} */
             excluded: "near_miss" | "helicopter" | "not_airline" | "same_airframe" | "same_operator_type" | "over_limit" | null;
+        };
+        /** @description Why a plane is worth pointing out: `military`, `rare_type` (an uncommon Boeing or Airbus), `foreign_operator` or `foreign_aircraft` (registered abroad). */
+        Highlight: {
+            /** @enum {string} */
+            kind: "military" | "rare_type" | "foreign_operator" | "foreign_aircraft";
+            label: string;
         };
         DisplayPreviewRequest: {
             settings?: components["schemas"]["DisplaySettingsPatch"];
@@ -7318,6 +7326,9 @@ export interface components {
         SeenAircraftReport: {
             passes: number;
             airframes: number;
+            interesting_airframes: number;
+            /** @description The registration country most passes carry; other countries count as foreign. */
+            home_country: string | null;
             by_type: {
                 icao_type_code: string | null;
                 manufacturer: string | null;
@@ -7405,6 +7416,7 @@ export interface components {
                 icao24: string | null;
                 registration: string | null;
             } | null;
+            highlights: components["schemas"]["Highlight"][];
         };
         /** @description A photo picked for an airframe. Links only; the image is never downloaded. */
         SavedPhoto: {
@@ -7541,7 +7553,7 @@ export interface components {
                 /** Format: date-time */
                 processed_at: string | null;
             } | null;
-            /** @description Why this photo may not be cut out (its licence), or null when it may. */
+            /** @description Why this photo’s licence does not allow edited copies, or null when it does. While licence checks are switched off for testing, this is a warning only. */
             cutout_refusal: string | null;
         };
         AdminPoster: {

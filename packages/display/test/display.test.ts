@@ -45,6 +45,7 @@ function candidate(over: Partial<DisplayCandidate> = {}): DisplayCandidate {
     art_scope: null,
     airframe_sightings: 1,
     type_sightings: 10,
+    highlights: [],
     ...over,
   };
 }
@@ -110,27 +111,37 @@ describe('selection', () => {
     expect(pick.ranked.filter((r) => r.excluded === 'over_limit')).toHaveLength(4);
   });
 
-  test('filters near misses, helicopters and non-airline aircraft on request', () => {
+  test('leaves out near misses and helicopters by default, airlines-only on request', () => {
     const near = candidate({ status: 'near_miss', operator_icao: 'AAA' });
     const heli = candidate({
       aircraft_class: 'helicopter',
       icao_type_code: 'B407',
       operator_icao: null,
     });
+    // Unknown type: recognised by its maker.
+    const untyped = candidate({
+      aircraft_class: null,
+      icao_type_code: null,
+      manufacturer: 'Airbus Helicopters',
+      operator_icao: null,
+    });
     const ga = candidate({ operator_icao: null, icao_type_code: 'C172' });
-    const pickDefault = selectForDisplay([near, heli, ga], settings(), RULES, NOW);
+    const all = [near, heli, untyped, ga];
+    const pickDefault = selectForDisplay(all, settings(), RULES, NOW);
     expect(pickDefault.ranked.find((r) => r.candidate === near)?.excluded).toBe('near_miss');
-    expect(ids(pickDefault.selected).sort()).toEqual([heli.overflight_id, ga.overflight_id].sort());
+    expect(pickDefault.ranked.find((r) => r.candidate === heli)?.excluded).toBe('helicopter');
+    expect(pickDefault.ranked.find((r) => r.candidate === untyped)?.excluded).toBe('helicopter');
+    expect(ids(pickDefault.selected)).toEqual([ga.overflight_id]);
 
-    const strict = selectForDisplay(
-      [near, heli, ga],
-      settings({ include_near_misses: true, include_helicopters: false, airline_only: true }),
+    const opted = selectForDisplay(
+      all,
+      settings({ include_near_misses: true, include_helicopters: true, airline_only: true }),
       RULES,
       NOW,
     );
-    expect(ids(strict.selected)).toEqual([near.overflight_id]);
-    expect(strict.ranked.find((r) => r.candidate === heli)?.excluded).toBe('helicopter');
-    expect(strict.ranked.find((r) => r.candidate === ga)?.excluded).toBe('not_airline');
+    expect(ids(opted.selected)).toEqual([near.overflight_id]);
+    expect(opted.ranked.find((r) => r.candidate === heli)?.excluded).toBe('not_airline');
+    expect(opted.ranked.find((r) => r.candidate === ga)?.excluded).toBe('not_airline');
   });
 
   test('shows one pass per airframe and one plane per operator + type', () => {

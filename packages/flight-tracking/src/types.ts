@@ -12,6 +12,8 @@ export interface NormalizedAircraftPosition {
   icaoTypeCode: string | null;
   typeDescription: string | null;
   operatorName: string | null;
+  /** Flagged military by the provider's aircraft database. */
+  military: boolean;
   latitude: number;
   longitude: number;
   /** Barometric altitude in feet; null when unknown. */

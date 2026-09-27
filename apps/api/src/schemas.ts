@@ -2,6 +2,7 @@ import { z } from '@hono/zod-openapi';
 import {
   ART_SCOPES,
   ART_STATUSES,
+  HIGHLIGHT_KINDS,
   CUTOUT_STATUSES,
   IMAGE_CONTENT_TYPES,
   OVERFLIGHT_STATUSES,
@@ -818,6 +819,17 @@ export const displayPreviewRequestSchema = z
   .strict()
   .openapi('DisplayPreviewRequest');
 
+export const highlightSchema = z
+  .object({
+    kind: z.enum(HIGHLIGHT_KINDS),
+    label: z.string(),
+  })
+  .openapi('Highlight', {
+    description:
+      'Why a plane is worth pointing out: `military`, `rare_type` (an uncommon Boeing or ' +
+      'Airbus), `foreign_operator` or `foreign_aircraft` (registered abroad).',
+  });
+
 export const scoredCandidateSchema = z
   .object({
     overflight_id: uuid,
@@ -843,6 +855,7 @@ export const scoredCandidateSchema = z
     art_scope: z.enum(ART_SCOPES).nullable(),
     airframe_sightings: z.number().int(),
     type_sightings: z.number().int().nullable(),
+    highlights: z.array(highlightSchema),
     score: z.number(),
     components: z.object({
       rarity: z.number(),
@@ -1186,6 +1199,7 @@ export const seenAircraftSchema = z
         "Your best photo for this airframe's operator + type slot (null when the slot is " +
           'empty or the type is unknown). It may be of another airframe.',
       ),
+    highlights: z.array(highlightSchema),
   })
   .openapi('SeenAircraft', { description: 'One airframe seen overhead in the period.' });
 
@@ -1210,6 +1224,11 @@ export const seenAircraftReportSchema = z
   .object({
     passes: z.number().int(),
     airframes: z.number().int(),
+    interesting_airframes: z.number().int(),
+    home_country: z
+      .string()
+      .nullable()
+      .describe('The registration country most passes carry; other countries count as foreign.'),
     by_type: z.array(
       z.object({
         icao_type_code: z.string().nullable(),

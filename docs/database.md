@@ -12,6 +12,7 @@ Migrations live in `supabase/migrations` and are applied in filename order:
 | `…0600_storage.sql`                 | four private buckets and owner-prefix object policies                                         |
 | `…0700_retention.sql`               | `private.apply_retention(...)`                                                                |
 | `…0923000400_display_selection.sql` | display settings, display selections, `private.admins`; selection retention                   |
+| `…0927000100_highlights.sql`        | `aircraft.is_military`, `aircraft.operator_country`; frames leave out helicopters by default  |
 
 ## Supabase 2026 Data API behaviour
 

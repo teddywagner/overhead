@@ -132,7 +132,12 @@ export class PostgresEnrichmentStore implements EnrichmentStore {
             update public.aircraft set
               operator_name = coalesce(${r.airlineName}, operator_name),
               operator_icao = coalesce(${r.airlineIcao}, operator_icao),
-              operator_iata = coalesce(${r.airlineIata}, operator_iata)
+              operator_iata = coalesce(${r.airlineIata}, operator_iata),
+              -- Keep a known country only while the airline stays the same.
+              operator_country = case
+                when ${r.airlineCountry}::text is not null then ${r.airlineCountry}
+                when ${r.airlineIcao}::text is not distinct from operator_icao then operator_country
+              end
             where id = ${target.aircraftId}
               and coalesce(metadata_source, '') <> 'manual'`;
         }

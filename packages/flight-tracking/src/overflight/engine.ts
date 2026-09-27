@@ -239,6 +239,7 @@ function startPass(
       icaoTypeCode: pos.icaoTypeCode,
       typeDescription: pos.typeDescription,
       operatorName: pos.operatorName,
+      military: pos.military,
       closest,
       crossing: qualifies(closest, input.location) ? closest : null,
       points: [sample],
@@ -320,6 +321,7 @@ function advancePass(
   pass.state.icaoTypeCode = pos.icaoTypeCode ?? pass.state.icaoTypeCode;
   pass.state.typeDescription = pos.typeDescription ?? pass.state.typeDescription;
   pass.state.operatorName = pos.operatorName ?? pass.state.operatorName;
+  pass.state.military = pos.military || (pass.state.military ?? false);
 
   const lastPoint = pass.state.points[pass.state.points.length - 1];
   if (
@@ -391,6 +393,7 @@ export function finalizePass(
       icaoTypeCode: pass.state.icaoTypeCode,
       typeDescription: pass.state.typeDescription,
       operatorName: pass.state.operatorName,
+      military: pass.state.military ?? false,
       firstSeenAt: pass.firstSeenAt,
       closestSeenAt: chosen.observedAt,
       lastSeenAt: pass.lastSeenAt,

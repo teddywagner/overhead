@@ -43,6 +43,7 @@ function pass(id: string, seenAt: Date, over: Partial<DisplayCandidate> = {}): D
     art_scope: null,
     airframe_sightings: 1,
     type_sightings: null,
+    highlights: [],
     ...over,
   };
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, unwrap, type Schemas } from '../api';
 import { fmtAgo, fmtNum, planeType, route, routeNames } from '../format';
+import { Highlights } from '../components/Highlights';
 import { PhotoPicker } from '../components/PhotoPicker';
 import {
   PROVIDER_LABEL,
@@ -476,7 +477,8 @@ export function Aircraft() {
   const [days, setDays] = useState(30);
   const [makers, setMakers] = useState('');
   const [nearMisses, setNearMisses] = useState(false);
-  const [noHelicopters, setNoHelicopters] = useState(false);
+  const [noHelicopters, setNoHelicopters] = useState(true);
+  const [interesting, setInteresting] = useState(false);
   const [typeCode, setTypeCode] = useState<string | undefined>();
   const [operator, setOperator] = useState<string | undefined>();
   const [onlyMissing, setOnlyMissing] = useState(false);
@@ -493,6 +495,7 @@ export function Aircraft() {
             include_near_misses: nearMisses ? 'true' : 'false',
             limit: 300,
             exclude_helicopters: noHelicopters ? 'true' : 'false',
+            interesting: interesting ? 'true' : 'false',
             ...(owner ? { owner_id: owner } : {}),
             ...(makers ? { manufacturer: makers } : {}),
             ...(typeCode ? { type_code: typeCode } : {}),
@@ -506,7 +509,7 @@ export function Aircraft() {
         setError('');
       })
       .catch((e: Error) => setError(e.message));
-  }, [owner, days, makers, nearMisses, noHelicopters, typeCode, operator]);
+  }, [owner, days, makers, nearMisses, noHelicopters, interesting, typeCode, operator]);
 
   useEffect(() => load(), [load]);
 
@@ -571,6 +574,8 @@ export function Aircraft() {
   const shownItems = (report?.items ?? []).filter(
     (p) => !onlyMissing || (p.icao_type_code && !p.collection_best),
   );
+  // Interesting planes are mostly one-offs: newest first reads better than most seen.
+  if (interesting) shownItems.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at));
 
   return (
     <section>
@@ -618,6 +623,17 @@ export function Aircraft() {
           />
           hide helicopters
         </label>
+        <label
+          className="check"
+          title="Military, rare Boeing and Airbus types, and foreign operators or registrations"
+        >
+          <input
+            type="checkbox"
+            checked={interesting}
+            onChange={(e) => setInteresting(e.target.checked)}
+          />
+          only interesting
+        </label>
         <label className="check" title="Planes whose operator + type has no best photo yet">
           <input
             type="checkbox"
@@ -662,6 +678,17 @@ export function Aircraft() {
               <div className="muted small">Operators</div>
               <div className="strong">{capped(report.by_operator.length)}</div>
             </div>
+            <div
+              className="stat"
+              title={
+                report.home_country
+                  ? `Military, rare Boeing and Airbus types, and anything from outside ${report.home_country}`
+                  : 'Military and rare Boeing and Airbus types (foreign needs looked-up registrations)'
+              }
+            >
+              <div className="muted small">Interesting</div>
+              <div className="strong">{fmtNum(report.interesting_airframes)}</div>
+            </div>
           </div>
 
           <div className="dist-grid">
@@ -692,14 +719,19 @@ export function Aircraft() {
             <span className="muted small">
               {onlyMissing
                 ? `${shownItems.length} missing from your collection`
-                : report.items.length < report.airframes
-                  ? `showing the ${report.items.length} most seen of ${report.airframes}`
-                  : `${report.airframes}`}
+                : interesting
+                  ? `${shownItems.length} interesting, latest first`
+                  : report.items.length < report.airframes
+                    ? `showing the ${report.items.length} most seen of ${report.airframes}`
+                    : `${report.airframes}`}
             </span>
           </h2>
           <div className="art-grid">
             {shownItems.map((p) => (
-              <div key={p.icao24} className="art-card static">
+              <div
+                key={p.icao24}
+                className={`art-card static${p.highlights.length ? ' interesting' : ''}`}
+              >
                 <Photo
                   plane={p}
                   onPicked={(result) => onPicked(p, result)}
@@ -708,6 +740,7 @@ export function Aircraft() {
                 <div className="art-meta">
                   <div className="strong">{p.registration ?? p.icao24.toUpperCase()}</div>
                   <div>{planeType(p)}</div>
+                  <Highlights items={p.highlights} />
                   <div className="muted small">
                     {p.operator_name ?? p.operator_icao ?? 'No operator'}
                     {p.icao_type_code ? ` · ${p.icao_type_code}` : ''}

@@ -31,6 +31,12 @@ describe('readsb v2 response parsing (Airplanes.live, adsb.lol)', () => {
     expect(p.observedAt.getTime()).toBe(1789700000000 - 1200);
   });
 
+  test('reads the military bit of dbFlags', () => {
+    expect(byHex.get('f00001')!.military).toBe(false);
+    expect(byHex.get('f00006')!.military).toBe(false);
+    expect(byHex.get('f00008')!.military).toBe(true);
+  });
+
   test('marks ground traffic and keeps non-ICAO (~) addresses', () => {
     expect(byHex.get('f00006')!.onGround).toBe(true);
     expect(byHex.get('~f0000d')).toBeDefined();

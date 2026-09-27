@@ -12,6 +12,12 @@
   --warn-soft: #fdf1e3;
   --err: #c0362c;
   --err-soft: #fdecea;
+  --mil: #6941c6;
+  --mil-soft: #f1ecfb;
+  --rare: #a15c07;
+  --rare-soft: #fef4d6;
+  --foreign: #0e7490;
+  --foreign-soft: #e3f4f8;
   --radius: 8px;
   color-scheme: light dark;
   font:
@@ -36,6 +42,12 @@
     --warn-soft: #33250f;
     --err: #f07167;
     --err-soft: #3a1a18;
+    --mil: #b69cf2;
+    --mil-soft: #2a2140;
+    --rare: #f2c14e;
+    --rare-soft: #36290c;
+    --foreign: #5cc8e0;
+    --foreign-soft: #10303a;
   }
 }
 
@@ -525,6 +537,32 @@ a.button-like:hover {
 .badge.err {
   background: var(--err-soft);
   color: var(--err);
+}
+.highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0;
+}
+.badge.hl {
+  white-space: normal;
+}
+.badge.hl.military {
+  background: var(--mil-soft);
+  color: var(--mil);
+}
+.badge.hl.rare_type {
+  background: var(--rare-soft);
+  color: var(--rare);
+}
+.badge.hl.foreign_operator,
+.badge.hl.foreign_aircraft {
+  background: var(--foreign-soft);
+  color: var(--foreign);
+}
+.art-card.interesting {
+  border-color: var(--rare);
+  box-shadow: 0 0 0 1px var(--rare);
 }
 .art-grid {
   display: grid;

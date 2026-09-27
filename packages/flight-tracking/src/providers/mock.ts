@@ -12,6 +12,7 @@ export interface MockTrack {
   icaoTypeCode: string | null;
   typeDescription?: string | null;
   operatorName?: string | null;
+  military?: boolean;
   /** Seconds after the scenario epoch when the track starts. */
   startS: number;
   durationS: number;
@@ -74,6 +75,7 @@ export function mockPositionAt(
     icaoTypeCode: track.icaoTypeCode,
     typeDescription: track.typeDescription ?? null,
     operatorName: track.operatorName ?? null,
+    military: track.military ?? false,
     latitude: point.latitude,
     longitude: point.longitude,
     altitudeFt: track.onGround ? 0 : alt,

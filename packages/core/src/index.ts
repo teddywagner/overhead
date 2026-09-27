@@ -5,6 +5,7 @@ export * from './domain';
 export * from './env';
 export * from './errors';
 export * from './geo';
+export * from './highlights';
 export * from './logger';
 export * from './storage';
 export * from './time';

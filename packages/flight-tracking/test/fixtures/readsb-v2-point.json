@@ -60,7 +60,8 @@
       "lat": 0.52,
       "lon": 0.48,
       "track": 370,
-      "seen_pos": 0
+      "seen_pos": 0,
+      "dbFlags": 3
     }
   ],
   "msg": "No error",

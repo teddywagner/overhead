@@ -26,6 +26,7 @@ describe('adsbdb parsing', () => {
       airlineName: 'American Airlines',
       airlineIcao: 'AAL',
       airlineIata: 'AA',
+      airlineCountry: 'United States',
       flightNumber: 'AA2995',
       originCode: 'JFK',
       destinationCode: 'MEX',

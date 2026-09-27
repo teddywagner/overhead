@@ -165,8 +165,9 @@ active, decides which recent passes it should show. The logic lives in
 
 1. **Candidates**: the location's recorded passes from the last
    `window_hours` (a rolling window, default 6 h).
-2. **Filters**: near misses (off by default), helicopters (on), airlines only
-   (off).
+2. **Filters**: near misses (off by default), helicopters (off by default;
+   the ICAO type class, else a Bell, Eurocopter or Airbus Helicopters maker),
+   airlines only (off).
 3. **Score** (0–100): a weighted mean of five components, each 0–1:
 
    | component | meaning                                                                       | default weight |
@@ -193,6 +194,25 @@ portrait renderer (next phase); until then frames keep serving posters.
 
 Settings live in `public.device_display_settings` and are edited from the
 admin board, whose preview runs exactly this code with draft settings.
+
+## Highlights
+
+`aircraftHighlights` in `@overhead/core` labels what makes a plane worth
+pointing out. The admin board shows the labels as badges on the Aircraft page
+(which can be narrowed to them with "only interesting") and in a frame's
+candidate list; they do not change scores or what a frame shows.
+
+| kind               | when                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `military`         | the feed's aircraft database flags it (readsb `dbFlags` bit 1, kept as `aircraft.is_military`), or its address is in the US military block `ae0000`–`afffff` |
+| `rare_type`        | an uncommon Boeing or Airbus type (747, A380, A340, Beluga, Dreamlifter, 737 Classic, …; `RARE_TYPES`)                                                       |
+| `foreign_operator` | the operating airline's country (`aircraft.operator_country`, from adsbdb route lookups) is not the home country                                             |
+| `foreign_aircraft` | registered outside the home country, unless its airline is from that same country                                                                            |
+
+The **home country** is the registration country most of the location's
+passes over the last 90 days carry (`loadHomeCountry`), so nothing needs
+configuring; until some aircraft have been looked up nothing counts as
+foreign. The admin report uses all passes of the selected user.
 
 ## Cutouts (background removal)
 

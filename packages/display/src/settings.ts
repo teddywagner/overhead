@@ -48,7 +48,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   window_hours: 6,
   min_dwell_minutes: 60,
   include_near_misses: false,
-  include_helicopters: true,
+  include_helicopters: false,
   airline_only: false,
   one_per_operator_type: true,
   weights: { rarity: 3, proximity: 2, recency: 1, artwork: 2, detail: 1 },

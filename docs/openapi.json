@@ -2239,6 +2239,12 @@
           "type_sightings": {
             "type": ["integer", "null"]
           },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Highlight"
+            }
+          },
           "score": {
             "type": "number"
           },
@@ -2300,10 +2306,25 @@
           "art_scope",
           "airframe_sightings",
           "type_sightings",
+          "highlights",
           "score",
           "components",
           "excluded"
         ]
+      },
+      "Highlight": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["military", "rare_type", "foreign_operator", "foreign_aircraft"]
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["kind", "label"],
+        "description": "Why a plane is worth pointing out: `military`, `rare_type` (an uncommon Boeing or Airbus), `foreign_operator` or `foreign_aircraft` (registered abroad)."
       },
       "DisplayPreviewRequest": {
         "type": "object",
@@ -2674,6 +2695,13 @@
           "airframes": {
             "type": "integer"
           },
+          "interesting_airframes": {
+            "type": "integer"
+          },
+          "home_country": {
+            "type": ["string", "null"],
+            "description": "The registration country most passes carry; other countries count as foreign."
+          },
           "by_type": {
             "type": "array",
             "items": {
@@ -2819,7 +2847,16 @@
             }
           }
         },
-        "required": ["passes", "airframes", "by_type", "by_operator", "items", "collection"],
+        "required": [
+          "passes",
+          "airframes",
+          "interesting_airframes",
+          "home_country",
+          "by_type",
+          "by_operator",
+          "items",
+          "collection"
+        ],
         "description": "Airframes seen overhead, most-seen first, with pass counts by aircraft type and by operator (top 50 each) over the same filtered passes. `collection` lists every operator + type slot seen (known types only, top 300) with your best photo for it."
       },
       "SeenAircraft": {
@@ -2966,6 +3003,12 @@
               "registration"
             ],
             "description": "Your best photo for this airframe's operator + type slot (null when the slot is empty or the type is unknown). It may be of another airframe."
+          },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Highlight"
+            }
           }
         },
         "required": [
@@ -2985,7 +3028,8 @@
           "closest_distance_m",
           "saved_photo",
           "recent_routes",
-          "collection_best"
+          "collection_best",
+          "highlights"
         ],
         "description": "One airframe seen overhead in the period."
       },
@@ -3404,7 +3448,7 @@
           },
           "cutout_refusal": {
             "type": ["string", "null"],
-            "description": "Why this photo may not be cut out (its licence), or null when it may."
+            "description": "Why this photo’s licence does not allow edited copies, or null when it does. While licence checks are switched off for testing, this is a warning only."
           }
         },
         "required": [
@@ -10325,7 +10369,7 @@
       "get": {
         "tags": ["Admin: assets"],
         "summary": "Planes seen overhead",
-        "description": "Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown.",
+        "description": "Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown. `interesting` keeps only airframes with a highlight (military, rare Boeing or Airbus type, foreign operator or registration); foreign means not from `home_country`, the registration country most passes carry.",
         "security": [
           {
             "bearerAuth": []
@@ -10395,6 +10439,15 @@
             },
             "required": false,
             "name": "exclude_helicopters",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "required": false,
+            "name": "interesting",
             "in": "query"
           },
           {

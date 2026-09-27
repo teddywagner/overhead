@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import {
   EnvValidationError,
+  aircraftHighlights,
+  isMilitaryAddress,
   REDACTED,
   apiEnvSchema,
   appName,
@@ -335,5 +337,75 @@ describe('cutouts', () => {
     const id = '22222222-2222-4222-8222-222222222222';
     expect(cutoutPath(OWNER, id)).toBe(`${OWNER}/cutout/${id}.png`);
     expect(isOwnedObjectPath(cutoutPath(OWNER, id), OWNER)).toBe(true);
+  });
+});
+
+describe('sighting highlights', () => {
+  const plane: Parameters<typeof aircraftHighlights>[0] = {
+    icao24: 'a1b2c3',
+    icao_type_code: 'B738',
+    manufacturer: 'Boeing',
+    model: '737-800',
+    military: false,
+    country: 'United States',
+    operator_name: 'American Airlines',
+    operator_icao: 'AAL',
+    operator_country: 'United States',
+  };
+  const kinds = (p: typeof plane, home: string | null = 'United States') =>
+    aircraftHighlights(p, home).map((h) => h.kind);
+
+  test('an ordinary domestic airliner is not highlighted', () => {
+    expect(kinds(plane)).toEqual([]);
+  });
+
+  test('military: flagged by the feed or inside the US military address block', () => {
+    expect(kinds({ ...plane, military: true })).toEqual(['military']);
+    expect(kinds({ ...plane, icao24: 'ae1234' })).toEqual(['military']);
+    expect(isMilitaryAddress('adffff')).toBe(false);
+    expect(isMilitaryAddress('afffff')).toBe(true);
+    expect(isMilitaryAddress('~ae1234')).toBe(false);
+  });
+
+  test('rare Boeing and Airbus types, named from the aircraft when known', () => {
+    expect(aircraftHighlights({ ...plane, icao_type_code: 'B748', model: '747-8' }, null)).toEqual([
+      { kind: 'rare_type', label: 'Rare: Boeing 747-8' },
+    ]);
+    expect(
+      aircraftHighlights(
+        { ...plane, icao_type_code: 'A388', manufacturer: null, model: null },
+        null,
+      ),
+    ).toEqual([{ kind: 'rare_type', label: 'Rare: Airbus A380' }]);
+  });
+
+  test('foreign operator, without repeating its home registration', () => {
+    const lufthansa = {
+      ...plane,
+      country: 'Germany',
+      operator_name: 'Lufthansa',
+      operator_icao: 'DLH',
+      operator_country: 'Germany',
+    };
+    expect(aircraftHighlights(lufthansa, 'United States')).toEqual([
+      { kind: 'foreign_operator', label: 'Lufthansa (Germany)' },
+    ]);
+    expect(kinds(lufthansa, 'germany')).toEqual([]);
+  });
+
+  test('foreign-registered airframes: private, or leased to a domestic airline', () => {
+    const privateCanadian = {
+      ...plane,
+      country: 'Canada',
+      operator_name: null,
+      operator_icao: null,
+      operator_country: null,
+    };
+    expect(kinds(privateCanadian)).toEqual(['foreign_aircraft']);
+    expect(kinds({ ...plane, country: 'Ireland' })).toEqual(['foreign_aircraft']);
+  });
+
+  test('nothing is foreign without a home country', () => {
+    expect(kinds({ ...plane, country: 'Canada', operator_country: 'Canada' }, null)).toEqual([]);
   });
 });

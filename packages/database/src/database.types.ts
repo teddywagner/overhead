@@ -11,9 +11,11 @@ export type Database = {
           icao_type_code: string | null;
           icao24: string;
           id: string;
+          is_military: boolean;
           manufacturer: string | null;
           metadata_source: string | null;
           model: string | null;
+          operator_country: string | null;
           operator_iata: string | null;
           operator_icao: string | null;
           operator_name: string | null;
@@ -29,9 +31,11 @@ export type Database = {
           icao_type_code?: string | null;
           icao24: string;
           id?: string;
+          is_military?: boolean;
           manufacturer?: string | null;
           metadata_source?: string | null;
           model?: string | null;
+          operator_country?: string | null;
           operator_iata?: string | null;
           operator_icao?: string | null;
           operator_name?: string | null;
@@ -47,9 +51,11 @@ export type Database = {
           icao_type_code?: string | null;
           icao24?: string;
           id?: string;
+          is_military?: boolean;
           manufacturer?: string | null;
           metadata_source?: string | null;
           model?: string | null;
+          operator_country?: string | null;
           operator_iata?: string | null;
           operator_icao?: string | null;
           operator_name?: string | null;
