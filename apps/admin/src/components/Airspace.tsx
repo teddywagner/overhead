@@ -50,7 +50,7 @@ const EXTENT_LABEL: Record<Extent, string> = {
 };
 const VIEWS = { top: [0, 90], '3d': [-30, 28], side: [0, 2] } as const;
 
-const W = 800;
+const W = 600;
 const PAD = 28;
 
 /** East/north metres from the centre (equirectangular; fine at these ranges). */
@@ -162,7 +162,7 @@ export function Airspace({
   // A drag that ends over a dot must not also select it.
   const dragged = useRef(false);
 
-  const H = compact ? 360 : 520;
+  const H = compact ? 280 : 380;
   const { latitude: lat0, longitude: lon0 } = geometry;
   const overheadR = geometry.overhead_radius_m;
   const nearR = Math.min(nearMissRadiusM(overheadR), geometry.search_radius_nm * NM_M);

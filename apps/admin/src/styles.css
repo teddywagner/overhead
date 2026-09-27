@@ -837,6 +837,7 @@ textarea {
 }
 .airspace-canvas {
   width: 100%;
+  max-width: 600px;
   height: auto;
   display: block;
   background: var(--bg);
