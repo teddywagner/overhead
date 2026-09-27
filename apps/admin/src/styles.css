@@ -837,6 +837,7 @@ textarea {
 }
 .airspace-canvas {
   width: 100%;
+  max-width: 600px;
   height: auto;
   display: block;
   background: var(--bg);
@@ -853,7 +854,20 @@ textarea {
   fill: var(--panel);
 }
 .as-tiles {
-  opacity: 0.75;
+  opacity: 0.9;
+}
+/* Keep rings, stems and labels readable on top of the map. */
+.as-ring,
+.as-track polyline,
+.as-pass .stem {
+  filter: drop-shadow(0 0 1.5px rgb(255 255 255 / 90%));
+}
+.as-labels text,
+.as-ruler text {
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .as-grid {
   stroke: var(--line);
