@@ -86,9 +86,9 @@ export const fmtNm = (m: number) => `${(m / NM_M).toFixed(m < NM_M * 10 ? 1 : 0)
 
 /** OSM tiles covering a square of `radius` metres around the centre. */
 function tilesFor(lat0: number, lon0: number, radius: number) {
-  // About three tiles across the disc: street-level detail without
+  // About four tiles across the shown extent: street-level detail without
   // loading dozens of tiles.
-  const perTile = radius / 1.5;
+  const perTile = radius / 2;
   const z = Math.max(
     2,
     Math.min(17, Math.floor(Math.log2((40_075_016 * Math.cos(lat0 * RAD)) / perTile))),
@@ -238,8 +238,8 @@ export function Airspace({
       .join(' ');
   }, [overheadR, ceiling, cosT, sinT, sinP, cosP, cx, cy, scale]);
 
-  // The map covers just the shown disc around home.
-  const mapR = R;
+  // The map runs past the shown extent so the ground never ends abruptly.
+  const mapR = R * 1.6;
   const tiles = useMemo(
     () => (showMap ? tilesFor(lat0, lon0, mapR) : []),
     [showMap, lat0, lon0, mapR],
@@ -381,13 +381,13 @@ export function Airspace({
       >
         <defs>
           <clipPath id="airspace-disc" clipPathUnits="userSpaceOnUse">
-            <circle cx={0} cy={0} r={mapR} />
+            <rect x={-mapR} y={-mapR} width={2 * mapR} height={2 * mapR} />
           </clipPath>
         </defs>
 
         {/* Ground plane: map, grid and rings. */}
         <g transform={`matrix(${groundMatrix})`}>
-          <circle cx={0} cy={0} r={R} className="as-ground" />
+          {tiles.length === 0 && <circle cx={0} cy={0} r={R} className="as-ground" />}
           {tiles.length > 0 && (
             <g clipPath="url(#airspace-disc)" className="as-tiles">
               <g transform="scale(1,-1)">
