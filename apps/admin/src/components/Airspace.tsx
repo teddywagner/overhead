@@ -142,9 +142,7 @@ export function Airspace({
   const [azimuth, setAzimuth] = useState<number>(VIEWS['3d'][0]);
   const [elevation, setElevation] = useState<number>(VIEWS['3d'][1]);
   const [extent, setExtent] = useState<Extent>(compact ? 'search' : 'near');
-  // Heights are shown compressed by default: at true scale a 15,000 ft
-  // ceiling towers over a 1 km radius and hides the map.
-  const [exaggeration, setExaggeration] = useState(0.25);
+  const [exaggeration, setExaggeration] = useState(1);
   const [showMap, setShowMapState] = useState(() => {
     try {
       return localStorage.getItem('airspace-map') !== 'off';
