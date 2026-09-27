@@ -86,7 +86,9 @@ export const fmtNm = (m: number) => `${(m / NM_M).toFixed(m < NM_M * 10 ? 1 : 0)
 
 /** OSM tiles covering a square of `radius` metres around the centre. */
 function tilesFor(lat0: number, lon0: number, radius: number) {
-  const perTile = (2 * radius) / 3;
+  // About four tiles across the shown extent: street-level detail without
+  // loading dozens of tiles.
+  const perTile = radius / 2;
   const z = Math.max(
     2,
     Math.min(17, Math.floor(Math.log2((40_075_016 * Math.cos(lat0 * RAD)) / perTile))),
@@ -140,8 +142,24 @@ export function Airspace({
   const [azimuth, setAzimuth] = useState<number>(VIEWS['3d'][0]);
   const [elevation, setElevation] = useState<number>(VIEWS['3d'][1]);
   const [extent, setExtent] = useState<Extent>(compact ? 'search' : 'near');
-  const [exaggeration, setExaggeration] = useState(1);
-  const [showMap, setShowMap] = useState(false);
+  // Heights are shown compressed by default: at true scale a 15,000 ft
+  // ceiling towers over a 1 km radius and hides the map.
+  const [exaggeration, setExaggeration] = useState(0.25);
+  const [showMap, setShowMapState] = useState(() => {
+    try {
+      return localStorage.getItem('airspace-map') !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const setShowMap = (on: boolean) => {
+    setShowMapState(on);
+    try {
+      localStorage.setItem('airspace-map', on ? 'on' : 'off');
+    } catch {
+      // Private mode: the choice just isn't remembered.
+    }
+  };
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   // A drag that ends over a dot must not also select it.
   const dragged = useRef(false);
@@ -222,7 +240,12 @@ export function Airspace({
       .join(' ');
   }, [overheadR, ceiling, cosT, sinT, sinP, cosP, cx, cy, scale]);
 
-  const tiles = useMemo(() => (showMap ? tilesFor(lat0, lon0, R) : []), [showMap, lat0, lon0, R]);
+  // The map runs past the shown extent so the ground never ends abruptly.
+  const mapR = R * 1.6;
+  const tiles = useMemo(
+    () => (showMap ? tilesFor(lat0, lon0, mapR) : []),
+    [showMap, lat0, lon0, mapR],
+  );
 
   // Rightmost point of a ring on screen, for its label.
   const labelAt = (r: number, z = 0): [number, number] => {
@@ -324,12 +347,15 @@ export function Airspace({
             </button>
           ))}
         </div>
-        <label className="check small" title="Stretch heights so low passes stand out">
-          Height ×
+        <label
+          className="check small"
+          title="Vertical scale against distances on the ground (1× is true scale)"
+        >
+          Height
           <select value={exaggeration} onChange={(e) => setExaggeration(Number(e.target.value))}>
-            {[1, 2, 3, 5, 10].map((n) => (
+            {[0.1, 0.25, 0.5, 1, 2].map((n) => (
               <option key={n} value={n}>
-                {n}
+                {n}×
               </option>
             ))}
           </select>
@@ -339,7 +365,7 @@ export function Airspace({
           title="Loads map tiles from OpenStreetMap, whose servers then see which area is shown"
         >
           <input type="checkbox" checked={showMap} onChange={(e) => setShowMap(e.target.checked)} />
-          street map
+          map
         </label>
       </div>
       <svg
@@ -357,13 +383,13 @@ export function Airspace({
       >
         <defs>
           <clipPath id="airspace-disc" clipPathUnits="userSpaceOnUse">
-            <circle cx={0} cy={0} r={R} />
+            <rect x={-mapR} y={-mapR} width={2 * mapR} height={2 * mapR} />
           </clipPath>
         </defs>
 
         {/* Ground plane: map, grid and rings. */}
         <g transform={`matrix(${groundMatrix})`}>
-          <circle cx={0} cy={0} r={R} className="as-ground" />
+          {tiles.length === 0 && <circle cx={0} cy={0} r={R} className="as-ground" />}
           {tiles.length > 0 && (
             <g clipPath="url(#airspace-disc)" className="as-tiles">
               <g transform="scale(1,-1)">
@@ -491,9 +517,10 @@ export function Airspace({
         )}
       </svg>
       <div className="muted small">
-        Drag to orbit.{exaggeration > 1 ? ` Heights are stretched ${exaggeration}×.` : ''} Dots are
-        passes at their closest approach
+        Drag to orbit. Heights are drawn at {exaggeration}× the ground scale
+        {exaggeration === 1 ? ' (true scale)' : ''}. Dots are passes at their closest approach
         {onSelect ? '; click one to draw its track' : ''}.
+        {showMap && ' Map tiles come from OpenStreetMap, whose servers see the area shown.'}
       </div>
     </div>
   );
