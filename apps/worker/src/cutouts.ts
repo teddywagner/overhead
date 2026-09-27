@@ -1,4 +1,4 @@
-import { cutoutPath, cutoutRefusal, type Logger } from '@overhead/core';
+import { CUTOUTS_IGNORE_LICENCES, cutoutPath, cutoutRefusal, type Logger } from '@overhead/core';
 import { CutoutError, type BackgroundRemover, type ImageData } from './background-removers';
 import type { CutoutJob, CutoutStore } from './cutout-store';
 import { safeMessage } from './poller';
@@ -111,7 +111,7 @@ export class CutoutWorker {
       license_name: job.licenseName,
       storage_path: job.storagePath,
     });
-    if (refusal) throw new CutoutError('not_allowed', refusal, false);
+    if (refusal && !CUTOUTS_IGNORE_LICENCES) throw new CutoutError('not_allowed', refusal, false);
 
     let photo: ImageData;
     if (job.storagePath) photo = await store.downloadSource(job.storagePath);

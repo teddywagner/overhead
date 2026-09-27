@@ -1,5 +1,6 @@
 import {
   BUCKETS,
+  CUTOUTS_IGNORE_LICENCES,
   cutoutRefusal,
   matchArtAsset,
   type ArtCandidate,
@@ -668,7 +669,7 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
   async requestCutout(sourceImageId: string) {
     const [image] = await this.listSourceImages({ id: sourceImageId, limit: 1 });
     if (!image) return 'not_found' as const;
-    if (image.cutout_refusal) return { refused: image.cutout_refusal };
+    if (image.cutout_refusal && !CUTOUTS_IGNORE_LICENCES) return { refused: image.cutout_refusal };
     await this.sql`
       insert into public.image_cutouts (owner_id, source_image_id)
       values (${image.owner_id}, ${image.id})

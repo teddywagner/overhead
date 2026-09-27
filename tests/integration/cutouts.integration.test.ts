@@ -9,7 +9,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { deflateSync } from 'node:zlib';
-import { CUTOUT_MAX_ATTEMPTS, silentLogger } from '@overhead/core';
+import { CUTOUTS_IGNORE_LICENCES, CUTOUT_MAX_ATTEMPTS, silentLogger } from '@overhead/core';
 import { createAdminClient, createUserClient, type Sql } from '@overhead/database';
 import {
   CutoutError,
@@ -157,9 +157,11 @@ describe.skipIf(skipIntegration)('cutouts', () => {
     await deps.close();
   });
 
-  test('linked-only photos are refused; the owner’s upload is queued', async () => {
+  test('linked-only photos carry a licence warning; the owner’s upload is queued', async () => {
     const refused = await call(app, 'POST', `/admin/v1/source-images/${spottedId}/cutout`, admin);
-    expect(refused.status).toBe(400);
+    expect(refused.status).toBe(CUTOUTS_IGNORE_LICENCES ? 200 : 400);
+    // Keep the rest of the run to the upload.
+    await sql`delete from public.image_cutouts where source_image_id = ${spottedId}`;
     expect((await listed()).find((i) => i.id === spottedId)!.cutout_refusal).toMatch(
       /Planespotters/,
     );

@@ -1114,3 +1114,7 @@ tr.selectable:hover td {
   flex-wrap: wrap;
   align-items: center;
 }
+.cutout-warning {
+  padding: 4px 12px 0;
+  color: var(--warn);
+}

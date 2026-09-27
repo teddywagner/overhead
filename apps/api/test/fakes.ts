@@ -1,4 +1,4 @@
-import { createLogger, cutoutRefusal, type Logger } from '@overhead/core';
+import { CUTOUTS_IGNORE_LICENCES, createLogger, cutoutRefusal, type Logger } from '@overhead/core';
 import type { TypedSupabaseClient } from '@overhead/database';
 import type {
   AdminArtAsset,
@@ -341,7 +341,7 @@ export class FakeAdminAssetsRepository implements AdminAssetsRepository {
     const image = this.sourceImages.find((i) => i.id === id);
     if (!image) return 'not_found' as const;
     const refused = cutoutRefusal(image);
-    if (refused) return { refused };
+    if (refused && !CUTOUTS_IGNORE_LICENCES) return { refused };
     image.cutout = {
       status: 'pending' as const,
       image_url: null,

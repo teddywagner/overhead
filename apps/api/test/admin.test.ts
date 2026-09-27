@@ -1,3 +1,4 @@
+import { CUTOUTS_IGNORE_LICENCES } from '@overhead/core';
 import { describe, expect, test } from 'bun:test';
 import { DEFAULT_DISPLAY_SETTINGS, type DisplayCandidate } from '@overhead/display';
 import { ProviderError } from '@overhead/flight-tracking';
@@ -535,11 +536,16 @@ describe('artwork', () => {
     expect(((await ok.json()) as { data: { cutout: unknown } }).data.cutout).toMatchObject({
       status: 'pending',
     });
-    const refused = await send(app, 'POST', `/admin/v1/source-images/${spotted}/cutout`);
-    expect(refused.status).toBe(400);
-    expect(((await refused.json()) as { error: { message: string } }).error.message).toMatch(
-      /Planespotters/,
-    );
+    const spottedRes = await send(app, 'POST', `/admin/v1/source-images/${spotted}/cutout`);
+    if (CUTOUTS_IGNORE_LICENCES) {
+      // Testing mode: queued anyway, with the licence problem kept as a warning.
+      expect(spottedRes.status).toBe(200);
+    } else {
+      expect(spottedRes.status).toBe(400);
+      expect(((await spottedRes.json()) as { error: { message: string } }).error.message).toMatch(
+        /Planespotters/,
+      );
+    }
     const missing = await send(
       app,
       'POST',

@@ -7,6 +7,13 @@
 export const CUTOUT_STATUSES = ['pending', 'processing', 'done', 'failed'] as const;
 export type CutoutStatus = (typeof CUTOUT_STATUSES)[number];
 
+/**
+ * Testing switch: when true, cutouts are made for every photo and
+ * `cutoutRefusal` is only shown as a licence warning. Set back to false
+ * before using cutouts for anything beyond private testing.
+ */
+export const CUTOUTS_IGNORE_LICENCES = true;
+
 /** Attempts before a failing cutout is left alone until it is requested again. */
 export const CUTOUT_MAX_ATTEMPTS = 3;
 

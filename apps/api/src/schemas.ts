@@ -1000,7 +1000,10 @@ export const adminSourceImageSchema = z
     cutout_refusal: z
       .string()
       .nullable()
-      .describe('Why this photo may not be cut out (its licence), or null when it may.'),
+      .describe(
+        'Why this photo’s licence does not allow edited copies, or null when it does. ' +
+          'While licence checks are switched off for testing, this is a warning only.',
+      ),
   })
   .openapi('AdminSourceImage');
 
