@@ -5447,7 +5447,7 @@ export interface paths {
         };
         /**
          * Planes seen overhead
-         * @description Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft type and by operator. `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown. `interesting` keeps only airframes with a highlight (military, rare Boeing or Airbus type, foreign operator or registration); foreign means not from `home_country`, the registration country most passes carry.
+         * @description Recorded passes grouped by airframe, plus pass counts by aircraft type and by operator. Airframes come most-seen first, or with `sort=recent` latest seen first (the limit applies after sorting). `manufacturer` is a comma-separated list of name prefixes, e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown. `interesting` keeps only airframes with a highlight (military, rare Boeing or Airbus type, foreign operator or registration); foreign means not from `home_country`, the registration country most passes carry.
          */
         get: {
             parameters: {
@@ -5460,6 +5460,7 @@ export interface paths {
                     manufacturer?: string;
                     exclude_helicopters?: "true" | "false";
                     interesting?: "true" | "false";
+                    sort?: "passes" | "recent";
                     limit?: number;
                 };
                 header?: never;

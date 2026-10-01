@@ -154,4 +154,26 @@ describe.skipIf(skipIntegration)('sighting highlights', () => {
       expect({ key, kinds: c?.highlights.map((h) => h.kind) }).toEqual({ key, kinds });
     }
   });
+
+  test('the admin report lists airframes most seen or latest seen first', async () => {
+    const pass = (p: Plane, i: number, key: string, minutesAgo: number) => sql`
+      insert into public.overflights (owner_id, location_id, aircraft_id, provider,
+        provider_pass_key, icao24, first_seen_at, closest_seen_at, last_seen_at, local_date,
+        minimum_distance_m, closest_altitude_ft, closest_latitude, closest_longitude, status,
+        qualification_reason)
+      values (${owner.id}, ${locationId}, ${aircraftIds[i]!}, 'mock', ${key}, ${p.icao24},
+        now() - make_interval(mins => ${minutesAgo + 1}), now() - make_interval(mins => ${minutesAgo}),
+        now() - make_interval(mins => ${minutesAgo - 1}), current_date, 150, 3000, 0.301, 0.3,
+        'qualified', 'crossed_within_overhead_radius')`;
+    // home1 is seen most (three passes, all older); home2 most recently.
+    await pass(planes.home1, 0, `hl:${planes.home1.icao24}:2`, 60);
+    await pass(planes.home1, 0, `hl:${planes.home1.icao24}:3`, 90);
+    await pass(planes.home2, 1, `hl:${planes.home2.icao24}:2`, 3);
+
+    const most = await report('&limit=1');
+    expect(most.items.map((i) => i.icao24)).toEqual([planes.home1.icao24]);
+    const latest = await report('&sort=recent&limit=1');
+    expect(latest.items.map((i) => i.icao24)).toEqual([planes.home2.icao24]);
+    expect(latest.airframes).toBe(7);
+  });
 });

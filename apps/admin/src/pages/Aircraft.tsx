@@ -47,6 +47,12 @@ const MAKERS = [
   ['boeing', 'Boeing'],
 ] as const;
 
+const SORTS = [
+  ['recent', 'Latest seen first'],
+  ['passes', 'Most seen first'],
+] as const;
+type Sort = (typeof SORTS)[number][0];
+
 const TOP = 12;
 
 interface Bar {
@@ -476,6 +482,7 @@ export function Aircraft() {
   const [owner, setOwner] = useState('');
   const [days, setDays] = useState(30);
   const [makers, setMakers] = useState('');
+  const [sort, setSort] = useState<Sort>('recent');
   const [nearMisses, setNearMisses] = useState(false);
   const [noHelicopters, setNoHelicopters] = useState(true);
   const [interesting, setInteresting] = useState(false);
@@ -496,6 +503,7 @@ export function Aircraft() {
             limit: 300,
             exclude_helicopters: noHelicopters ? 'true' : 'false',
             interesting: interesting ? 'true' : 'false',
+            sort,
             ...(owner ? { owner_id: owner } : {}),
             ...(makers ? { manufacturer: makers } : {}),
             ...(typeCode ? { type_code: typeCode } : {}),
@@ -509,7 +517,7 @@ export function Aircraft() {
         setError('');
       })
       .catch((e: Error) => setError(e.message));
-  }, [owner, days, makers, nearMisses, noHelicopters, interesting, typeCode, operator]);
+  }, [owner, days, makers, sort, nearMisses, noHelicopters, interesting, typeCode, operator]);
 
   useEffect(() => load(), [load]);
 
@@ -574,15 +582,14 @@ export function Aircraft() {
   const shownItems = (report?.items ?? []).filter(
     (p) => !onlyMissing || (p.icao_type_code && !p.collection_best),
   );
-  // Interesting planes are mostly one-offs: newest first reads better than most seen.
-  if (interesting) shownItems.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at));
+  const order = sort === 'recent' ? 'latest seen' : 'most seen';
 
   return (
     <section>
       <h1>Aircraft</h1>
       <p className="muted">
-        Every plane recorded overhead, most-seen first, with how the passes split by aircraft type
-        and operator. Click a bar to filter. Photos come from Planespotters.net.
+        Every plane recorded overhead, latest or most seen first, with how the passes split by
+        aircraft type and operator. Click a bar to filter. Photos come from Planespotters.net.
       </p>
       <div className="filters">
         <select value={owner} onChange={(e) => setOwner(e.target.value)}>
@@ -602,6 +609,13 @@ export function Aircraft() {
         </select>
         <select value={makers} onChange={(e) => setMakers(e.target.value)}>
           {MAKERS.map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+          {SORTS.map(([v, label]) => (
             <option key={v} value={v}>
               {label}
             </option>
@@ -720,9 +734,9 @@ export function Aircraft() {
               {onlyMissing
                 ? `${shownItems.length} missing from your collection`
                 : interesting
-                  ? `${shownItems.length} interesting, latest first`
+                  ? `${shownItems.length} interesting, ${order} first`
                   : report.items.length < report.airframes
-                    ? `showing the ${report.items.length} most seen of ${report.airframes}`
+                    ? `showing the ${report.items.length} ${order} of ${report.airframes}`
                     : `${report.airframes}`}
             </span>
           </h2>
