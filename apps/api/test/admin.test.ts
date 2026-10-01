@@ -341,9 +341,18 @@ describe('artwork', () => {
       manufacturers: ['Airbus', 'Boeing'],
       excludeHelicopters: false,
       interestingOnly: false,
+      sort: 'passes',
       limit: 200,
     });
-    for (const bad of ['manufacturer=%27%3Bdrop', 'days=0', 'limit=501', 'operator=JB']) {
+    await send(app, 'GET', '/admin/v1/seen-aircraft?sort=recent');
+    expect(deps.adminAssets.seenFilters[1]?.sort).toBe('recent');
+    for (const bad of [
+      'manufacturer=%27%3Bdrop',
+      'days=0',
+      'limit=501',
+      'operator=JB',
+      'sort=oldest',
+    ]) {
       expect((await send(app, 'GET', `/admin/v1/seen-aircraft?${bad}`)).status).toBe(400);
     }
   });

@@ -247,7 +247,7 @@ export interface SeenAircraftReport {
   home_country: string | null;
   by_type: SeenTypeCount[];
   by_operator: SeenOperatorCount[];
-  /** Most-seen first; capped by the request's limit. */
+  /** Most-seen (or latest seen) first; capped by the request's limit. */
   items: SeenAircraft[];
   /** Operator + type slots seen (known types only), most-seen first. */
   collection: CollectionSlot[];
@@ -267,6 +267,8 @@ export interface SeenAircraftFilter {
   excludeHelicopters?: boolean;
   /** Only military, rare-type and foreign aircraft. */
   interestingOnly?: boolean;
+  /** Airframe order: most passes (default) or latest seen first. */
+  sort?: 'passes' | 'recent';
   limit: number;
 }
 
@@ -838,6 +840,8 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
       : null;
     const home = await loadHomeCountry(this.sql, { ownerId: f.ownerId }, new Date());
     const rare = Object.keys(RARE_TYPES).join(',');
+    // Latest seen first leads when asked; otherwise the key is null and most seen decides.
+    const recent = f.sort === 'recent';
     const [r] = (await this.sql`
       with base as (
         select o.owner_id, o.icao24, o.first_seen_at, o.closest_seen_at, o.minimum_distance_m,
@@ -914,7 +918,8 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                    from seen g where g.icao_type_code is not null
                   group by g.operator_icao, g.icao_type_code
                   order by passes desc limit 300) t) as collection,
-        (select coalesce(jsonb_agg(t order by t.passes desc, t.last_seen_at desc), '[]'::jsonb)
+        (select coalesce(jsonb_agg(t order by case when ${recent} then t.last_seen_at end desc,
+                                          t.passes desc, t.last_seen_at desc), '[]'::jsonb)
            from (select icao24, max(aircraft_id::text) as aircraft_id,
                         max(registration) as registration, max(icao_type_code) as icao_type_code,
                         max(manufacturer) as manufacturer, max(model) as model,
@@ -951,7 +956,9 @@ export class SqlAdminAssetsRepository implements AdminAssetsRepository {
                             and b.operator_icao is not distinct from max(seen.operator_icao))
                           as collection_best
                    from seen group by icao24
-                  order by passes desc, last_seen_at desc limit ${f.limit}) t) as items`) as Row[];
+                  order by case when ${recent} then max(closest_seen_at) end desc,
+                           passes desc, last_seen_at desc
+                  limit ${f.limit}) t) as items`) as Row[];
 
     const items = (r!.items as Row[]).map((i) => {
       const plane = {

@@ -250,8 +250,9 @@ export const adminAssetsRouter = createRouter()
       ...meta(
         tag,
         'Planes seen overhead',
-        'Recorded passes grouped by airframe, most-seen first, plus pass counts by aircraft ' +
-          'type and by operator. `manufacturer` is a comma-separated list of name prefixes, ' +
+        'Recorded passes grouped by airframe, plus pass counts by aircraft type and by ' +
+          'operator. Airframes come most-seen first, or with `sort=recent` latest seen first ' +
+          '(the limit applies after sorting). `manufacturer` is a comma-separated list of name prefixes, ' +
           'e.g. `airbus,boeing`. `exclude_helicopters` drops types classed as helicopters, ' +
           'and Bell, Eurocopter and Airbus Helicopters aircraft whose type is unknown. ' +
           '`interesting` keeps only airframes with a highlight (military, rare Boeing or ' +
@@ -281,6 +282,7 @@ export const adminAssetsRouter = createRouter()
             .enum(['true', 'false'])
             .optional()
             .transform((v) => v === 'true'),
+          sort: z.enum(['passes', 'recent']).default('passes'),
           limit: limit(500, 200),
         }),
       },
@@ -300,6 +302,7 @@ export const adminAssetsRouter = createRouter()
           manufacturers: q.manufacturer?.split(','),
           excludeHelicopters: q.exclude_helicopters,
           interestingOnly: q.interesting,
+          sort: q.sort,
           limit: q.limit,
         }),
       );
